@@ -33,51 +33,11 @@ Forza Racing Series is a comprehensive project for organizing and managing racin
 
 ### Bot Setup
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/your-username/Forza-Racing-Series.git
-   cd Forza-Racing-Series/bot
-   ```
-
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Configure environment variables:
-   - Copy `.env.sample` to `.env`
-   - Add your Discord app credentials (APP_ID, DISCORD_TOKEN, PUBLIC_KEY)
-
-4. Install slash commands:
-   ```
-   npm run register
-   ```
-
-5. Start the bot:
-   ```
-   node app.js
-   ```
+read bot/README.md
 
 ### Activity Setup
 
-1. Navigate to the activity directory:
-   ```
-   cd ../activity
-   ```
-
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Configure Firebase:
-   - Copy `firebase.example.js` to `firebase.js`
-   - Replace placeholder values with your Firebase configuration
-
-4. Start the activity:
-   ```
-   npm run dev
-   ```
+read activity/README.md
 
 ## Usage
 
