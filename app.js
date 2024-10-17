@@ -103,6 +103,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
 
+      if (name === 'race') {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Race announcement is being prepared...',
+          },
+        });
+      }
+
       console.error(`Unknown command: ${name}`);
       return res.status(400).json({ error: 'Unknown command' });
     } catch (error) {

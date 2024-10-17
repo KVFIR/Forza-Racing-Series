@@ -62,6 +62,12 @@ const ADD_SCORE_COMMAND = {
   contexts: [0, 1, 2],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, SCORE_COMMAND, ADD_SCORE_COMMAND];
+const RACE_COMMAND = {
+  name: 'race',
+  description: 'Create a race announcement',
+  type: 1,
+};
+
+const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, SCORE_COMMAND, ADD_SCORE_COMMAND, RACE_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
