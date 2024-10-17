@@ -106,3 +106,10 @@ Click **Save Changes**, and your app should be ready to run 🚀
 - Browse the `examples/` folder in this project for smaller, feature-specific code examples
 - Join the **[Discord Developers server](https://discord.gg/discord-developers)** to ask questions about the API, attend events hosted by the Discord API team, and interact with other devs.
 - Check out **[community resources](https://discord.com/developers/docs/topics/community-resources#community-resources)** for language-specific tools maintained by community members.
+
+## Firebase Configuration
+
+To set up Firebase:
+
+1. Copy `firebase.example.js` to `firebase.js`
+2. Replace the placeholder values in `firebase.js` with your actual Firebase configuration
