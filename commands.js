@@ -44,6 +44,24 @@ const CHALLENGE_COMMAND = {
   contexts: [0, 2],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND];
+// New command to check user's score
+const SCORE_COMMAND = {
+  name: 'score',
+  description: 'Check your current score',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
+// New command to add to user's score
+const ADD_SCORE_COMMAND = {
+  name: 'add_score',
+  description: 'Increase your score by 1',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
+const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, SCORE_COMMAND, ADD_SCORE_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
