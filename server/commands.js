@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { getRPSChoices } from './game.js';
+import { getRPSChoices } from '../server/game.js';
 import { capitalize, InstallGlobalCommands } from './utils.js';
 
 // Get the game choices from game.js
@@ -62,12 +62,18 @@ const ADD_SCORE_COMMAND = {
   contexts: [0, 1, 2],
 };
 
-const RACE_COMMAND = {
-  name: 'race',
-  description: 'Create a race announcement',
+const CREATE_RACE_COMMAND = {
+  name: 'create_race',
+  description: 'Start the process of creating a new race',
   type: 1,
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, SCORE_COMMAND, ADD_SCORE_COMMAND, RACE_COMMAND];
+const ALL_COMMANDS = [
+  TEST_COMMAND, 
+  CHALLENGE_COMMAND, 
+  SCORE_COMMAND, 
+  ADD_SCORE_COMMAND, 
+  CREATE_RACE_COMMAND
+];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

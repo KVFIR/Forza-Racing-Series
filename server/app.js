@@ -10,6 +10,7 @@ import { getRandomEmoji } from './utils.js';
 import { getUser, createUser, updateUserScore } from './database.js';
 import { db } from './firebase.js';
 import { ref, set, get } from 'firebase/database';
+import { createRaceModal } from '../bot/modals/createRaceModal.js';
 
 // Create an express app
 const app = express();
@@ -103,13 +104,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
 
-      if (name === 'race') {
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Race announcement is being prepared...',
-          },
-        });
+      if (name === 'create_race') {
+        return res.send(createRaceModal());
       }
 
       console.error(`Unknown command: ${name}`);
