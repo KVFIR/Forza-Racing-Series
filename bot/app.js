@@ -10,7 +10,7 @@ import { getRandomEmoji } from './utils.js';
 import { getUser, createUser, updateUserScore } from './database.js';
 import { db } from './firebase.js';
 import { ref, set, get } from 'firebase/database';
-import { createRaceModal } from '../bot/modals/createRaceModal.js';
+import { createRaceModal } from './modals/createRaceModal.js';
 
 // Create an express app
 const app = express();
