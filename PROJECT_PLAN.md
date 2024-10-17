@@ -1,4 +1,4 @@
-План разработки Discord Activity для организации гонок в Forza:
+# План разработки Discord Activity для организации гонок в Forza
 
 1. Создание Discord Activity:
    a. Разработать основную структуру Activity
