@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import MainMenu from './components/MainMenu';
 import CreateRaceForm from './components/CreateRaceForm';
 import "./style.css";
-import backgroundImage from './public/images/background.png';
+import LoadingScreen from './components/LoadingScreen';
 
 let auth;
 
@@ -50,14 +50,17 @@ async function setupDiscordSdk() {
 }
 
 function App() {
+  const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState('menu');
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
 
   const handleCreateRace = () => {
     setCurrentView('createRace');
   };
 
   const handleMyRaces = () => {
-    // TODO: Implement My Races view
     console.log('My Races clicked');
   };
 
@@ -65,31 +68,30 @@ function App() {
     setCurrentView('menu');
   };
 
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
   return (
-    <div style={{
-      backgroundImage: `url(${backgroundImage})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      {currentView === 'menu' && (
-        <MainMenu onCreateRace={handleCreateRace} onMyRaces={handleMyRaces} />
-      )}
-      {currentView === 'createRace' && (
-        <div style={{ width: '100%', maxWidth: '600px' }}>
-          <button onClick={handleBackToMenu} className="back-button">Back to Menu</button>
-          <CreateRaceForm />
-        </div>
-      )}
+    <div className="h-full w-full flex flex-col items-center justify-start p-4 pt-safe overflow-auto">
+      <div className="w-full max-w-sm mt-safe flex-grow flex flex-col justify-center">
+        {currentView === 'menu' && (
+          <MainMenu onCreateRace={handleCreateRace} onMyRaces={handleMyRaces} />
+        )}
+        {currentView === 'createRace' && (
+          <>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleBackToMenu}
+              className="mb-4 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+            >
+              Back to Menu
+            </motion.button>
+            <CreateRaceForm />
+          </>
+        )}
+      </div>
     </div>
   );
 }
