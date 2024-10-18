@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const MainMenu = ({ onCreateRace, onMyRaces }) => {
+const MainMenu = ({ onCreateRace, onMyRaces, onJoinRace }) => {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -9,21 +9,30 @@ const MainMenu = ({ onCreateRace, onMyRaces }) => {
       transition={{ duration: 0.5 }}
       className="p-6 rounded-lg shadow-lg text-center w-full max-w-sm mx-auto"
     >
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Forza Race Organizer</h1>
+      <img src="/images/frs.webp" alt="FRS" className="mb-4 w-32 h-auto mx-auto" />
+      <h2 className="text-xl font-bold text-white mb-4">Event Manager</h2>
       <div className="space-y-4">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onCreateRace}
-          className="w-full bg-blue-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+          className="w-full bg-gray-500 bg-opacity-50 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400"
         >
           Create Race
         </motion.button>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={onJoinRace}
+          className="w-full bg-gray-500 bg-opacity-50 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400"
+        >
+          Join Race
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={onMyRaces}
-          className="w-full bg-green-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-50"
+          className="w-full bg-gray-500 bg-opacity-50 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400"
         >
           My Races
         </motion.button>
@@ -33,3 +42,4 @@ const MainMenu = ({ onCreateRace, onMyRaces }) => {
 };
 
 export default MainMenu;
+
