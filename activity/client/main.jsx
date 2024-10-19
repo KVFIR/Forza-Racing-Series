@@ -7,7 +7,6 @@ import EventList from './components/EventList';
 import "./style.css";
 import { motion } from 'framer-motion';
 import { IoArrowBackOutline } from 'react-icons/io5';
-import './firebase';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
