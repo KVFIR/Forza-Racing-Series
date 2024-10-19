@@ -15,9 +15,9 @@ const CreateRaceForm = ({ onCreateRace }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Здесь должна быть логика создания гонки
+    // Временно заглушим эту функцию
     console.log('Race created:', formData);
-    onCreateRace(formData);
+    // onCreateRace(formData);
   };
 
   return (
@@ -64,8 +64,13 @@ const CreateRaceForm = ({ onCreateRace }) => {
         whileTap={{ scale: 0.95 }}
         type="submit"
         className="w-full bg-blue-500 text-white py-2 px-4 rounded"
+        onClick={(e) => {
+          e.preventDefault();
+          console.log('Submit Race button clicked');
+          handleSubmit(e);
+        }}
       >
-        Create Race
+        Submit Race
       </motion.button>
     </motion.form>
   );

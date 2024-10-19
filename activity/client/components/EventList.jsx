@@ -9,7 +9,6 @@ const EventList = ({ events }) => {
       transition={{ duration: 0.5 }}
       className="space-y-4"
     >
-      <h2 className="text-xl font-bold text-white mb-4">Event List</h2>
       {events.map((event) => (
         <motion.div
           key={event.id}

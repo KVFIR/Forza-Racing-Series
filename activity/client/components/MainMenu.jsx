@@ -7,9 +7,9 @@ const MainMenu = ({ onCreateRace, onMyRaces, onJoinRace }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="p-6 rounded-lg shadow-lg text-center w-full max-w-sm mx-auto"
+      className="p-6 text-center w-full max-w-sm mx-auto"
     >
-      <img src="/images/frs.webp" alt="FRS" className="mb-4 w-32 h-auto mx-auto" />
+      <img src="/images/frs.webp" alt="FRS" className="mb-1 w-32 h-auto mx-auto" />
       <h2 className="text-xl font-bold text-white mb-4">Event Manager</h2>
       <div className="space-y-4">
         <motion.button
@@ -42,4 +42,3 @@ const MainMenu = ({ onCreateRace, onMyRaces, onJoinRace }) => {
 };
 
 export default MainMenu;
-

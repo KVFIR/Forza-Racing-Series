@@ -6,6 +6,7 @@ import CreateRaceForm from './components/CreateRaceForm';
 import EventList from './components/EventList';
 import "./style.css";
 import { motion } from 'framer-motion';
+import { IoArrowBackOutline } from 'react-icons/io5';
 
 let auth;
 
@@ -82,38 +83,42 @@ function App() {
     dispatch({ type: 'SET_VIEW', payload: view });
   };
 
-  const handleCreateRace = (raceData) => {
-    dispatch({ type: 'ADD_EVENT', payload: { ...raceData, id: Date.now() } });
-    handleViewChange('eventList');
+  const handleCreateRace = () => {
+    handleViewChange('createRace');
   };
 
   const handleMyRaces = () => {
     handleViewChange('eventList');
   };
 
+  const CurrentView = viewComponents[state.currentView];
+
   return (
-    <div className="h-full w-full flex flex-col items-center justify-start p-4 pt-safe overflow-auto">
-      <div className="w-full max-w-sm mt-safe flex-grow flex flex-col justify-center">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => handleViewChange('menu')}
-          className="mb-4 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
-        >
-          Back to Menu
-        </motion.button>
-        <div style={{ display: state.currentView === 'menu' ? 'block' : 'none' }}>
-          <MainMenu 
-            onCreateRace={() => handleViewChange('createRace')}
+    <div className="flex-1 overflow-y-auto p-4 pt-safe-top pb-safe-bottom pl-safe-left pr-safe-right">
+      <div className="w-full max-w-sm mx-auto relative flex flex-col mt-4">
+        {state.currentView !== 'menu' && (
+          <div className="flex items-center mb-4 w-full">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleViewChange('menu')}
+              className="text-white p-2 rounded-full bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 flex-shrink-0"
+            >
+              <IoArrowBackOutline size={20} />
+            </motion.button>
+            <h1 className="text-2xl font-bold text-white ml-4">
+              {state.currentView === 'createRace' ? 'Create Race' : 
+               state.currentView === 'eventList' ? 'Event List' : ''}
+            </h1>
+          </div>
+        )}
+        <div className="flex-grow">
+          <CurrentView
+            onCreateRace={handleCreateRace}
             onMyRaces={handleMyRaces}
             onJoinRace={() => handleViewChange('eventList')}
+            events={state.events}
           />
-        </div>
-        <div style={{ display: state.currentView === 'createRace' ? 'block' : 'none' }}>
-          <CreateRaceForm onCreateRace={handleCreateRace} />
-        </div>
-        <div style={{ display: state.currentView === 'eventList' ? 'block' : 'none' }}>
-          <EventList events={state.events} />
         </div>
       </div>
     </div>

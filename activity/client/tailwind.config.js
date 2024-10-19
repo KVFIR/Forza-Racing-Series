@@ -4,17 +4,20 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
+    "./main.jsx", // Добавлен путь к main.jsx
   ],
   theme: {
     extend: {
       spacing: {
-        'safe': 'env(safe-area-inset-top)',
+        'safe-top': 'var(--sait)',
+        'safe-bottom': 'var(--saib)',
+        'safe-left': 'var(--sail)',
+        'safe-right': 'var(--sair)',
       },
-      padding: {
-        'safe': 'env(safe-area-inset-top)',
-      },
-      margin: {
-        'safe': 'env(safe-area-inset-top)',
+      fontSize: {
+        // Пример пользовательских размеров шрифта
+        'xxl': '2.5rem',
+        'xxxl': '3rem',
       },
     },
   },
