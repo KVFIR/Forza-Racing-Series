@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { IoAdd, IoRemove } from 'react-icons/io5';
+import { motion, AnimatePresence } from 'framer-motion';
+import { IoCarSport, IoStopwatch, IoFlag } from 'react-icons/io5';
 import { toast } from 'react-toastify';
+import { tracks } from './TrackData';
+import RaceStageForm from './RaceStageForm';
+import Toggle from './Toggle';
 
 const CreateRaceForm = ({ onCreateRace, userId }) => {
   const [step, setStep] = useState(1);
+  const [activeTab, setActiveTab] = useState('race');
   const [formData, setFormData] = useState({
     name: '',
     dateTime: '',
@@ -12,16 +16,35 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
     track: '',
     trackConfig: '',
     carClasses: [''],
-    createdBy: userId
+    createdBy: userId,
+    practiceAndQualifying: {
+      enabled: false,
+      practiceTimeLimit: 30,
+      qualifyingLaps: 3,
+      intermissionPeriod: 2
+    },
+    race: {
+      raceType: 'laps',
+      numberOfLaps: 10,
+      raceTimer: 60,
+      startingTime: 'Random',
+      timeProgression: 'x1',
+      dynamicTrackRubber: true,
+      startingTrackRubber: 50,
+      weather: 'Random'
+    },
+    settings: {
+      carToCarCollisions: 'Default',
+      ghostBackmarkers: false,
+      simulationLevel: 'Damage, fuel & tires',
+      tireWear: 'x1.0',
+      forzaRaceRegulations: 'Moderate Penalty',
+      frrDisqualification: false,
+      disableGhostEffect: false
+    }
   });
   const [errorMessage, setErrorMessage] = useState('');
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-
-  const tracks = [
-    { name: 'Monza', configs: ['Full', 'GP', 'Junior'] },
-    { name: 'Spa', configs: ['Full', 'GP', 'Endurance'] },
-    // Добавьте другие трассы и их конфигурации
-  ];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -99,24 +122,34 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
     }
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = (e) => {
+    e.preventDefault();
     setAttemptedSubmit(true);
-    if (
-      formData.name &&
-      formData.dateTime &&
-      formData.slots &&
-      formData.track &&
-      formData.carClasses[0]
-    ) {
-      setStep(2);
+    if (step === 1) {
+      const selectedTrack = tracks.find(t => t.name === formData.track);
+      const isConfigRequired = selectedTrack && selectedTrack.configs.length > 0;
+      if (
+        formData.name &&
+        formData.dateTime &&
+        formData.slots &&
+        formData.track &&
+        formData.carClasses[0] &&
+        (!isConfigRequired || formData.trackConfig)
+      ) {
+        setStep(2);
+        setAttemptedSubmit(false);
+      } else {
+        toast.error('Please fill in all required fields before proceeding.');
+      }
+    } else if (step === 2) {
+      // Здесь можно добавить проверку для второго шага, если необходимо
+      setStep(3);
       setAttemptedSubmit(false);
-    } else {
-      toast.error('Please fill in all required fields before proceeding.');
     }
   };
 
   const renderStep1 = () => (
-    <>
+    <div className="space-y-4">
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Race Title *</label>
         <input
@@ -134,15 +167,15 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
           <p className="text-red-500 text-xs mt-1">Race title is required</p>
         )}
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1">Car Classes *</label>
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-300 mb-2">Car Classes *</label>
         {formData.carClasses.map((carClass, index) => (
           <div key={index} className="flex items-center space-x-2 mb-2">
             <input
               type="text"
               value={carClass}
               onChange={(e) => handleCarClassChange(index, e.target.value)}
-              placeholder={index === 0 ? "Enter car class (required)" : "Enter multiclass"}
+              placeholder={index === 0 ? "Enter car class (required)" : "Add multiclass"}
               className={`flex-1 p-2 rounded bg-gray-700 text-white border ${
                 attemptedSubmit && index === 0 && !carClass ? 'border-red-500' : 'border-gray-600'
               } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 ${
@@ -158,7 +191,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       </div>
       <div className="flex space-x-4">
         <div className="flex-1">
-          <label htmlFor="dateTime" className="block text-sm font-medium text-gray-300 mb-1">Date and Time *</label>
+          <label htmlFor="dateTime" className="block text-sm font-medium text-gray-300 mb-2">Date and Time *</label>
           <input
             type="datetime-local"
             id="dateTime"
@@ -174,7 +207,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
           )}
         </div>
         <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-300 mb-1">Slots *</label>
+          <label className="block text-sm font-medium text-gray-300 mb-2">Slots *</label>
           <div className="flex items-center">
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -208,7 +241,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       </div>
       <div className="flex space-x-4">
         <div className="flex-1">
-          <label htmlFor="track" className="block text-sm font-medium text-gray-300 mb-1">Track *</label>
+          <label htmlFor="track" className="block text-sm font-medium text-gray-300 mb-2">Track *</label>
           <select
             id="track"
             name="track"
@@ -228,40 +261,219 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
           )}
         </div>
         <div className="flex-1">
-          <label htmlFor="trackConfig" className="block text-sm font-medium text-gray-300 mb-1">Track Configuration</label>
+          <label htmlFor="trackConfig" className="block text-sm font-medium text-gray-300 mb-2">
+            Track Configuration {formData.track && tracks.find(t => t.name === formData.track).configs.length > 0 ? '*' : ''}
+          </label>
           <select
             id="trackConfig"
             name="trackConfig"
             value={formData.trackConfig}
             onChange={handleChange}
-            disabled={!formData.track}
-            className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+            disabled={!formData.track || tracks.find(t => t.name === formData.track).configs.length === 0}
+            className={`w-full p-2 rounded bg-gray-700 text-white border ${
+              attemptedSubmit && formData.track && tracks.find(t => t.name === formData.track).configs.length > 0 && !formData.trackConfig ? 'border-red-500' : 'border-gray-600'
+            } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50`}
           >
             <option value="">Select configuration</option>
             {formData.track && tracks.find(t => t.name === formData.track).configs.map(config => (
               <option key={config} value={config}>{config}</option>
             ))}
           </select>
+          {attemptedSubmit && formData.track && tracks.find(t => t.name === formData.track).configs.length > 0 && !formData.trackConfig && (
+            <p className="text-red-500 text-xs mt-1">Track configuration is required for this track</p>
+          )}
         </div>
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <>
+      <div className="flex mb-0">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          type="button"
+          onClick={() => setActiveTab('practiceAndQualifying')}
+          className={`flex-1 py-2 px-4 rounded-tl-lg text-white ${activeTab === 'practiceAndQualifying' ? 'bg-blue-600' : 'bg-gray-700'}`}
+        >
+          <IoStopwatch className="inline-block mr-2" /> P&Q
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          type="button"
+          onClick={() => setActiveTab('race')}
+          className={`flex-1 py-2 px-4 rounded-tr-lg text-white ${activeTab === 'race' ? 'bg-blue-600' : 'bg-gray-700'}`}
+        >
+          <IoFlag className="inline-block mr-2" /> Race
+        </motion.button>
+      </div>
+      <div className="bg-gray-700 p-4 rounded-b-lg">
+        <AnimatePresence mode="wait">
+          {activeTab === 'practiceAndQualifying' && (
+            <motion.div
+              key="practiceAndQualifying"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <RaceStageForm
+                stage="Practice & Qualifying"
+                data={formData.practiceAndQualifying}
+                onChange={(field, value) => handleStageChange('practiceAndQualifying', field, value)}
+                isRequired={false}
+              />
+            </motion.div>
+          )}
+          {activeTab === 'race' && (
+            <motion.div
+              key="race"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <RaceStageForm
+                stage="Race"
+                data={formData.race}
+                onChange={(field, value) => handleStageChange('race', field, value)}
+                isRequired={true}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );
 
-  const renderStep2 = () => (
-    <></>
+  const handleStageChange = (stage, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [stage]: {
+        ...prev[stage],
+        [field]: value
+      }
+    }));
+  };
+
+  const renderStep3 = () => (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-white mb-2">Race Settings</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="carToCarCollisions" className="block text-sm font-medium text-gray-300 mb-1">
+            Car-To-Car collisions
+          </label>
+          <select
+            id="carToCarCollisions"
+            value={formData.settings.carToCarCollisions}
+            onChange={(e) => handleSettingsChange('carToCarCollisions', e.target.value)}
+            className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+          >
+            <option value="Default">Default</option>
+            <option value="Always On">Always On</option>
+            <option value="Always Off">Always Off</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="ghostBackmarkers" className="block text-sm font-medium text-gray-300 mb-1">
+            Ghost Backmarkers
+          </label>
+          <Toggle
+            id="ghostBackmarkers"
+            checked={formData.settings.ghostBackmarkers}
+            onChange={(e) => handleSettingsChange('ghostBackmarkers', e.target.checked)}
+          />
+        </div>
+        <div>
+          <label htmlFor="simulationLevel" className="block text-sm font-medium text-gray-300 mb-1">
+            Simulation Level
+          </label>
+          <select
+            id="simulationLevel"
+            value={formData.settings.simulationLevel}
+            onChange={(e) => handleSettingsChange('simulationLevel', e.target.value)}
+            className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+          >
+            <option value="Damage, fuel & tires">Damage, fuel & tires</option>
+            <option value="Damage & fuel">Damage & fuel</option>
+            <option value="Damage only">Damage only</option>
+            <option value="No simulation">No simulation</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="tireWear" className="block text-sm font-medium text-gray-300 mb-1">
+            Tire Wear
+          </label>
+          <select
+            id="tireWear"
+            value={formData.settings.tireWear}
+            onChange={(e) => handleSettingsChange('tireWear', e.target.value)}
+            className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+          >
+            <option value="x1.0">x1.0</option>
+            <option value="x1.5">x1.5</option>
+            <option value="x2.0">x2.0</option>
+            <option value="x3.0">x3.0</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="forzaRaceRegulations" className="block text-sm font-medium text-gray-300 mb-1">
+            Forza Race Regulations
+          </label>
+          <select
+            id="forzaRaceRegulations"
+            value={formData.settings.forzaRaceRegulations}
+            onChange={(e) => handleSettingsChange('forzaRaceRegulations', e.target.value)}
+            className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+          >
+            <option value="Limited Penalty">Limited Penalty</option>
+            <option value="Moderate Penalty">Moderate Penalty</option>
+            <option value="Full Penalty">Full Penalty</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="frrDisqualification" className="block text-sm font-medium text-gray-300 mb-1">
+            FRR disqualification
+          </label>
+          <Toggle
+            id="frrDisqualification"
+            checked={formData.settings.frrDisqualification}
+            onChange={(e) => handleSettingsChange('frrDisqualification', e.target.checked)}
+          />
+        </div>
+        <div>
+          <label htmlFor="disableGhostEffect" className="block text-sm font-medium text-gray-300 mb-1">
+            Disable ghost effect
+          </label>
+          <Toggle
+            id="disableGhostEffect"
+            checked={formData.settings.disableGhostEffect}
+            onChange={(e) => handleSettingsChange('disableGhostEffect', e.target.checked)}
+          />
+        </div>
+      </div>
+    </div>
   );
 
+  const handleSettingsChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        [field]: value
+      }
+    }));
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="p-6 bg-gray-800 rounded-lg shadow-lg max-w-md mx-auto"
-    >
+    <div className="p-6 bg-gray-800 rounded-lg shadow-lg max-w-md mx-auto">
       <h2 className="text-2xl font-bold text-white mb-6">Create New Race</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {step === 1 ? renderStep1() : renderStep2()}
-        <div className="flex justify-end">
+        {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
+        <div className="flex justify-center">
           {step > 1 && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -273,7 +485,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
               Previous
             </motion.button>
           )}
-          {step < 2 ? (
+          {step < 3 ? (
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -281,13 +493,14 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
               onClick={handleNextStep}
               className="bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
             >
-              Next
+              Next Step
             </motion.button>
           ) : (
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               type="submit"
+              onClick={handleSubmit}
               className="bg-green-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
             >
               Create Race
@@ -295,7 +508,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
           )}
         </div>
       </form>
-    </motion.div>
+    </div>
   );
 };
 

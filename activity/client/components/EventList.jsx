@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { IoTrashOutline, IoChevronBackOutline, IoChevronForwardOutline } from 'react-icons/io5';
+import { IoTrashOutline, IoChevronBackOutline, IoChevronForwardOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoSettingsOutline, IoPeopleOutline } from 'react-icons/io5';
 
 const EventList = () => {
   const [races, setRaces] = useState([]);
@@ -80,16 +80,27 @@ const EventList = () => {
                   className="bg-gray-700 rounded-lg p-4 shadow-md"
                 >
                   <h3 className="text-lg font-semibold text-white">{race.name}</h3>
-                  <p className="text-gray-300">Track: {race.track}</p>
-                  {race.trackConfig && <p className="text-gray-300">Configuration: {race.trackConfig}</p>}
-                  <p className="text-gray-300">Car Classes: {race.carClasses.join(', ')}</p>
-                  <p className="text-gray-300">Date: {new Date(race.dateTime).toLocaleString()}</p>
-                  <p className="text-gray-300">Slots: {race.slots}</p>
+                  <div className="flex items-center text-gray-300 mt-2">
+                    <IoLocationOutline className="mr-2" />
+                    <span>{race.track}{race.trackConfig ? ` - ${race.trackConfig}` : ''}</span>
+                  </div>
+                  <div className="flex items-center text-gray-300 mt-1">
+                    <IoCarSportOutline className="mr-2" />
+                    <span>{race.carClasses.join(', ')}</span>
+                  </div>
+                  <div className="flex items-center text-gray-300 mt-1">
+                    <IoCalendarOutline className="mr-2" />
+                    <span>{new Date(race.dateTime).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center text-gray-300 mt-1">
+                    <IoPeopleOutline className="mr-2" />
+                    <span>{race.slots}</span>
+                  </div>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleDelete(race.id)}
-                    className="mt-2 px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300 ease-in-out flex items-center"
+                    className="mt-3 px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300 ease-in-out flex items-center"
                   >
                     <IoTrashOutline className="mr-1" /> Delete
                   </motion.button>
@@ -97,27 +108,31 @@ const EventList = () => {
               ))}
             </div>
           )}
-          <div className="flex justify-between mt-6">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 bg-gray-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-            >
-              <IoChevronBackOutline className="mr-1" /> Previous
-            </motion.button>
-            <span className="text-white">Page {currentPage} of {totalPages}</span>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 bg-gray-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-            >
-              Next <IoChevronForwardOutline className="ml-1" />
-            </motion.button>
-          </div>
+          {totalPages > 1 && (
+            <div className="flex justify-between mt-6">
+              {currentPage > 1 && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className="px-3 py-1 bg-gray-600 text-white rounded-lg flex items-center"
+                >
+                  <IoChevronBackOutline className="mr-1" /> Previous
+                </motion.button>
+              )}
+              <span className="text-white">Page {currentPage} of {totalPages}</span>
+              {currentPage < totalPages && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className="px-3 py-1 bg-gray-600 text-white rounded-lg flex items-center"
+                >
+                  Next <IoChevronForwardOutline className="ml-1" />
+                </motion.button>
+              )}
+            </div>
+          )}
         </>
       )}
     </motion.div>
