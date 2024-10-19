@@ -16,12 +16,14 @@ Discord Activities are web applications that can be run within Discord. Our appl
 ## Project Setup
 
 1. Clone the repository:
+
    ```
    git clone <repository-url>
    cd getting-started-activity
    ```
 
 2. Install dependencies:
+
    ```
    cd client
    npm install
@@ -32,6 +34,7 @@ Discord Activities are web applications that can be run within Discord. Our appl
 3. Set up environment variables:
    - Copy the `example.env` file to `.env` in the root directory
    - Fill in your Discord application credentials:
+
      ```
      VITE_DISCORD_CLIENT_ID=YOUR_DISCORD_CLIENT_ID_HERE
      DISCORD_CLIENT_SECRET=YOUR_DISCORD_CLIENT_SECRET
@@ -40,21 +43,24 @@ Discord Activities are web applications that can be run within Discord. Our appl
 ## Running the Application
 
 1. Start the client:
+
    ```
    cd client
    npm run dev
    ```
 
 2. In a new terminal, start the server:
+
    ```
    cd server
    npm run dev
    ```
 
 3. Set up a public endpoint using cloudflared:
-   ```
+
+```
    cloudflared tunnel --url http://localhost:5173
-   ```
+```
 
 4. Configure your Discord application:
    - Go to the Discord Developer Portal

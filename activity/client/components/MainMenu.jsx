@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const MainMenu = ({ onCreateRace, onMyRaces, onJoinRace }) => {
+const MainMenu = ({ onNavigate }) => {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -15,7 +15,7 @@ const MainMenu = ({ onCreateRace, onMyRaces, onJoinRace }) => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={onCreateRace}
+          onClick={() => onNavigate('create')}
           className="w-full bg-gray-500 bg-opacity-50 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400"
         >
           Create Race
@@ -23,7 +23,7 @@ const MainMenu = ({ onCreateRace, onMyRaces, onJoinRace }) => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={onJoinRace}
+          onClick={() => onNavigate('join')}
           className="w-full bg-gray-500 bg-opacity-50 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400"
         >
           Join Race
@@ -31,7 +31,7 @@ const MainMenu = ({ onCreateRace, onMyRaces, onJoinRace }) => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={onMyRaces}
+          onClick={() => onNavigate('list')}
           className="w-full bg-gray-500 bg-opacity-50 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400"
         >
           My Races

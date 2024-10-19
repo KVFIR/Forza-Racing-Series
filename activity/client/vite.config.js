@@ -12,10 +12,8 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         ws: true,
-      },
+      }
     },
-    hmr: {
-      clientPort: 443,
-    },
+    cors: true
   },
 });

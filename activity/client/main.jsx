@@ -1,16 +1,31 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import ReactDOM from 'react-dom/client';
-import { DiscordSDK } from "@discord/embedded-app-sdk";
+import { DiscordSDK, patchUrlMappings } from "@discord/embedded-app-sdk";
 import MainMenu from './components/MainMenu';
 import CreateRaceForm from './components/CreateRaceForm';
 import EventList from './components/EventList';
 import "./style.css";
 import { motion } from 'framer-motion';
 import { IoArrowBackOutline } from 'react-icons/io5';
+import './firebase';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
+const isProd = import.meta.env.PROD;
 let auth;
 
 const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
+
+async function setupApp() {
+  if (isProd) {
+    patchUrlMappings([
+      {prefix: '/firebase', target: 'firebasedatabase.app'},
+      {prefix: '/.proxy', target: 'localhost:3001'},
+      // Добавьте здесь другие необходимые маппинги
+    ]);
+  }
+  await setupDiscordSdk();
+}
 
 async function setupDiscordSdk() {
   await discordSdk.ready();
@@ -28,27 +43,34 @@ async function setupDiscordSdk() {
     ],
   });
 
-  const response = await fetch("/.proxy/api/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      code,
-    }),
-  });
-  const { access_token } = await response.json();
+  try {
+    const response = await fetch("/.proxy/api/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const { access_token } = await response.json();
+    
+    auth = await discordSdk.commands.authenticate({
+      access_token,
+    });
 
-  auth = await discordSdk.commands.authenticate({
-    access_token,
-  });
+    if (auth == null) {
+      throw new Error("Authenticate command failed");
+    }
 
-  if (auth == null) {
-    throw new Error("Authenticate command failed");
+    console.log("Discord SDK is authenticated");
+  } catch (error) {
+    console.error("Error during authentication:", error);
+    // Здесь можно добавить код для отображения ошибки пользователю
   }
-
-  console.log("Discord SDK is authenticated");
-  renderApp();
 }
 
 const initialState = {
@@ -77,51 +99,45 @@ const viewComponents = {
 };
 
 function App() {
+  const [view, setView] = useState('menu');
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const handleViewChange = (view) => {
-    dispatch({ type: 'SET_VIEW', payload: view });
+  const renderView = () => {
+    switch (view) {
+      case 'create':
+        return <CreateRaceForm onCreateRace={(newRace) => {
+          dispatch({ type: 'ADD_EVENT', payload: newRace });
+          setView('list');
+        }} />;
+      case 'join':
+        return <CreateRaceForm onJoinRace={() => setView('list')} />;
+      case 'list':
+        return <EventList />;
+      default:
+        return <MainMenu onNavigate={setView} />;
+    }
   };
-
-  const handleCreateRace = () => {
-    handleViewChange('createRace');
-  };
-
-  const handleMyRaces = () => {
-    handleViewChange('eventList');
-  };
-
-  const CurrentView = viewComponents[state.currentView];
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 pt-safe-top pb-safe-bottom pl-safe-left pr-safe-right">
-      <div className="w-full max-w-sm mx-auto relative flex flex-col mt-4">
-        {state.currentView !== 'menu' && (
-          <div className="flex items-center mb-4 w-full">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleViewChange('menu')}
-              className="text-white p-2 rounded-full bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 flex-shrink-0"
-            >
-              <IoArrowBackOutline size={20} />
-            </motion.button>
-            <h1 className="text-2xl font-bold text-white ml-4">
-              {state.currentView === 'createRace' ? 'Create Race' : 
-               state.currentView === 'eventList' ? 'Event List' : ''}
-            </h1>
-          </div>
-        )}
-        <div className="flex-grow">
-          <CurrentView
-            onCreateRace={handleCreateRace}
-            onMyRaces={handleMyRaces}
-            onJoinRace={() => handleViewChange('eventList')}
-            events={state.events}
-          />
-        </div>
-      </div>
-    </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="container mx-auto p-4"
+    >
+      {view !== 'menu' && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setView('menu')}
+          className="mb-4 w-full sm:w-auto bg-gray-500 bg-opacity-25 text-white py-2 px-4 rounded-lg text-base font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 flex items-center justify-center"
+        >
+          <IoArrowBackOutline className="mr-2" /> Back to Menu
+        </motion.button>
+      )}
+      {renderView()}
+      <ToastContainer position="bottom-right" />
+    </motion.div>
   );
 }
 
@@ -133,4 +149,4 @@ function renderApp() {
   );
 }
 
-setupDiscordSdk().catch(console.error);
+setupApp().then(renderApp).catch(console.error);
