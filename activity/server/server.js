@@ -39,7 +39,10 @@ const errorHandler = (err, req, res, next) => {
 const validateRace = [
   body('name').notEmpty().withMessage('Name is required'),
   body('track').notEmpty().withMessage('Track is required'),
-  body('carClass').notEmpty().withMessage('Car class is required'),
+  body('trackConfig').optional(),
+  body('slots').isInt({ min: 1 }).withMessage('Slots must be a positive integer'),
+  body('carClasses').isArray().withMessage('Car classes must be an array'),
+  body('carClasses.*').notEmpty().withMessage('Car class cannot be empty'),
   body('dateTime').isISO8601().toDate().withMessage('Invalid date and time')
 ];
 
@@ -118,11 +121,14 @@ app.post("/api/races", validateRace, async (req, res, next) => {
       ...req.body,
       dateTime: new Date(req.body.dateTime).toISOString()
     };
+    console.log('Attempting to create race:', raceData);
     const racesRef = ref(db, 'races');
     const newRaceRef = await push(racesRef, raceData);
+    console.log('Race created successfully:', newRaceRef.key);
     res.status(201).json({ id: newRaceRef.key, ...raceData });
   } catch (error) {
-    next(error);
+    console.error('Error creating race:', error);
+    res.status(500).json({ error: 'Failed to create race', details: error.message });
   }
 });
 
@@ -192,6 +198,27 @@ app.get("/api/races/:id", async (req, res, next) => {
       res.json({ id: snapshot.key, ...snapshot.val() });
     } else {
       res.status(404).json({ error: 'Race not found' });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Эндпоинт для получения информации о пользователе
+app.get("/api/users/:id", async (req, res, next) => {
+  try {
+    const userRef = ref(db, `users/${req.params.id}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      res.json({
+        id: snapshot.key,
+        username: userData.username || 'Unknown',
+        avatar: userData.avatar || 'https://example.com/default-avatar.png'
+      });
+    } else {
+      res.status(404).json({ error: 'User not found' });
     }
   } catch (error) {
     next(error);

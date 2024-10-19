@@ -17,6 +17,7 @@ const EventList = () => {
         throw new Error('Failed to fetch races');
       }
       const data = await response.json();
+      
       setRaces(data.races);
       setCurrentPage(data.currentPage);
       setTotalPages(data.totalPages);
@@ -80,8 +81,10 @@ const EventList = () => {
                 >
                   <h3 className="text-lg font-semibold text-white">{race.name}</h3>
                   <p className="text-gray-300">Track: {race.track}</p>
-                  <p className="text-gray-300">Car Class: {race.carClass}</p>
+                  {race.trackConfig && <p className="text-gray-300">Configuration: {race.trackConfig}</p>}
+                  <p className="text-gray-300">Car Classes: {race.carClasses.join(', ')}</p>
                   <p className="text-gray-300">Date: {new Date(race.dateTime).toLocaleString()}</p>
+                  <p className="text-gray-300">Slots: {race.slots}</p>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
