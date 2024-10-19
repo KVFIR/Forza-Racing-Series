@@ -107,7 +107,7 @@ function App() {
         return <CreateRaceForm onCreateRace={(newRace) => {
           dispatch({ type: 'ADD_EVENT', payload: newRace });
           setView('list');
-        }} />;
+        }} userId={auth.user.id} />;
       case 'join':
         return <CreateRaceForm onJoinRace={() => setView('list')} />;
       case 'list':

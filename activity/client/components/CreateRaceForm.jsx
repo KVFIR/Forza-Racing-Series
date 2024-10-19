@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
-const CreateRaceForm = ({ onCreateRace }) => {
+const CreateRaceForm = ({ onCreateRace, userId }) => {
   const [formData, setFormData] = useState({
     name: '',
     track: '',
@@ -16,12 +16,16 @@ const CreateRaceForm = ({ onCreateRace }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const raceData = {
+        ...formData,
+        createdBy: userId
+      };
       const response = await fetch('/.proxy/api/races', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(raceData),
       });
       if (!response.ok) {
         throw new Error('Failed to create race');
