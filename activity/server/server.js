@@ -114,9 +114,13 @@ app.post("/api/races", validateRace, async (req, res, next) => {
   }
 
   try {
+    const raceData = {
+      ...req.body,
+      dateTime: new Date(req.body.dateTime).toISOString()
+    };
     const racesRef = ref(db, 'races');
-    const newRaceRef = await push(racesRef, req.body);
-    res.status(201).json({ id: newRaceRef.key, ...req.body });
+    const newRaceRef = await push(racesRef, raceData);
+    res.status(201).json({ id: newRaceRef.key, ...raceData });
   } catch (error) {
     next(error);
   }
