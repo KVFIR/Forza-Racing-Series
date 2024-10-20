@@ -84,9 +84,9 @@ const ClassDetailsForm = ({ classData, onChange, attemptedSubmit }) => {
           onChange={(e) => onChange('restrictions', e.target.value)}
           className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
         >
-          <option value="stock">Full Stock</option>
-          <option value="featured">Featured Multiplayer Parts</option>
-          <option value="custom">Custom BoP</option>
+          <option value="Full Stock">Full Stock</option>
+          <option value="Featured Multiplayer Parts">Featured Multiplayer Parts</option>
+          <option value="Custom BoP">Custom BoP</option>
         </select>
       </div>
       {classData.restrictions === 'custom' && (
