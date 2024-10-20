@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { IoTrashOutline, IoChevronBackOutline, IoChevronForwardOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoSettingsOutline, IoPeopleOutline } from 'react-icons/io5';
+import { IoChevronBackOutline, IoChevronForwardOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoPeopleOutline, IoArrowBackOutline} from 'react-icons/io5';
+import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from './LoadingSpinner';
+import { useMediaQuery } from 'react-responsive';
 
 const EventList = () => {
+  const navigate = useNavigate();
   const [races, setRaces] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const isDesktop = useMediaQuery({ minWidth: 1024 });
 
   const fetchRaces = async (page = 1) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/.proxy/api/races?page=${page}&limit=10`);
+      const response = await fetch(`/.proxy/api/races?page=${page}&limit=${isDesktop ? 20 : 10}`);
       if (!response.ok) {
         throw new Error('Failed to fetch races');
       }
@@ -31,7 +36,7 @@ const EventList = () => {
 
   useEffect(() => {
     fetchRaces();
-  }, []);
+  }, [isDesktop]);
 
   const handleDelete = async (id) => {
     try {
@@ -55,87 +60,87 @@ const EventList = () => {
     }
   };
 
+  const handleBackToMenu = () => {
+    navigate('/');
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="p-6 bg-gray-800 rounded-lg shadow-lg max-w-md mx-auto"
-    >
-      <h2 className="text-2xl font-bold text-white mb-6">My Races</h2>
-      {isLoading ? (
-        <p className="text-white">Loading races...</p>
-      ) : (
-        <>
-          {races.length === 0 ? (
-            <p className="text-white">No races found.</p>
-          ) : (
-            <div className="space-y-4">
-              {races.map((race) => (
-                <motion.div
-                  key={race.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="bg-gray-700 rounded-lg p-4 shadow-md"
-                >
-                  <h3 className="text-lg font-semibold text-white">{race.name}</h3>
-                  <div className="flex items-center text-gray-300 mt-2">
-                    <IoLocationOutline className="mr-2" />
-                    <span>{race.track}{race.trackConfig ? ` - ${race.trackConfig}` : ''}</span>
-                  </div>
-                  <div className="flex items-center text-gray-300 mt-1">
-                    <IoCarSportOutline className="mr-2" />
-                    <span>{race.carClasses.join(', ')}</span>
-                  </div>
-                  <div className="flex items-center text-gray-300 mt-1">
-                    <IoCalendarOutline className="mr-2" />
-                    <span>{new Date(race.dateTime).toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center text-gray-300 mt-1">
-                    <IoPeopleOutline className="mr-2" />
-                    <span>{race.slots}</span>
-                  </div>
+    <div>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={handleBackToMenu}
+        className="mb-4 flex items-center bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+      >
+        <IoArrowBackOutline className="mr-2" />
+        Back to Menu
+      </motion.button>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className={`p-6 bg-gray-800 bg-opacity-80 rounded-lg shadow-lg mx-auto ${isDesktop ? 'max-w-6xl' : 'max-w-md'}`}
+      >
+        <h2 className="text-2xl font-bold text-white mb-6">My Races</h2>
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : (
+          <>
+            {races.length === 0 ? (
+              <p className="text-white">No races found.</p>
+            ) : (
+              <div className={`${isDesktop ? 'grid grid-cols-3 gap-4' : 'space-y-4'}`}>
+                {races.map((race) => (
+                  <motion.div
+                    key={race.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="bg-gray-700 rounded-lg p-4 shadow-md cursor-pointer hover:bg-gray-600 transition-colors duration-300"
+                    onClick={() => navigate(`/event/${race.id}`)}
+                  >
+                    <h3 className="text-lg font-semibold text-white">{race.name}</h3>
+                    <div className="flex items-center text-gray-300 mt-2">
+                      <IoLocationOutline className="mr-2" />
+                      <span>{race.track}{race.trackConfig ? ` - ${race.trackConfig}` : ''}</span>
+                    </div>
+                    <div className="flex items-center text-gray-300 mt-1">
+                      <IoCarSportOutline className="mr-2" />
+                      <span>{race.carClasses.join(', ')}</span>
+                    </div>
+                    <div className="flex items-center text-gray-300 mt-1">
+                      <IoCalendarOutline className="mr-2" />
+                      <span>{new Date(race.dateTime).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center text-gray-300 mt-1">
+                      <IoPeopleOutline className="mr-2" />
+                      <span>{race.slots}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-6">
+                {[...Array(totalPages)].map((_, index) => (
                   <motion.button
+                    key={index}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => handleDelete(race.id)}
-                    className="mt-3 px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300 ease-in-out flex items-center"
+                    onClick={() => handlePageChange(index + 1)}
+                    className={`mx-1 px-3 py-1 rounded-lg ${
+                      currentPage === index + 1 ? 'bg-blue-500 text-white' : 'bg-gray-600 text-white'
+                    }`}
                   >
-                    <IoTrashOutline className="mr-1" /> Delete
+                    {index + 1}
                   </motion.button>
-                </motion.div>
-              ))}
-            </div>
-          )}
-          {totalPages > 1 && (
-            <div className="flex justify-between mt-6">
-              {currentPage > 1 && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  className="px-3 py-1 bg-gray-600 text-white rounded-lg flex items-center"
-                >
-                  <IoChevronBackOutline className="mr-1" /> Previous
-                </motion.button>
-              )}
-              <span className="text-white">Page {currentPage} of {totalPages}</span>
-              {currentPage < totalPages && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  className="px-3 py-1 bg-gray-600 text-white rounded-lg flex items-center"
-                >
-                  Next <IoChevronForwardOutline className="ml-1" />
-                </motion.button>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </motion.div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </motion.div>
+    </div>
   );
 };
 

@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IoCarSport, IoStopwatch, IoFlag } from 'react-icons/io5';
+import { IoCarSport, IoStopwatch, IoFlag, IoArrowBackOutline } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import { tracks } from './TrackData';
 import RaceStageForm from './RaceStageForm';
 import Toggle from './Toggle';
+import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from './LoadingSpinner';
 
 const CreateRaceForm = ({ onCreateRace, userId }) => {
+  const navigate = useNavigate();
+
+  const handleBackToMenu = () => {
+    navigate('/');
+  };
+
   const [step, setStep] = useState(1);
   const [activeTab, setActiveTab] = useState('race');
   const [formData, setFormData] = useState({
@@ -469,45 +477,61 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
   };
 
   return (
-    <div className="p-6 bg-gray-800 rounded-lg shadow-lg max-w-md mx-auto">
-      <h2 className="text-2xl font-bold text-white mb-6">Create New Race</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
-        <div className="flex justify-center">
-          {step > 1 && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={() => setStep(step - 1)}
-              className="mr-2 bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
-            >
-              Previous
-            </motion.button>
-          )}
-          {step < 3 ? (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={handleNextStep}
-              className="bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-              Next Step
-            </motion.button>
-          ) : (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="submit"
-              onClick={handleSubmit}
-              className="bg-green-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
-            >
-              Create Race
-            </motion.button>
-          )}
-        </div>
-      </form>
+    <div>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={handleBackToMenu}
+        className="mb-4 flex items-center bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+      >
+        <IoArrowBackOutline className="mr-2" />
+        Back to Menu
+      </motion.button>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="p-6 bg-gray-800 bg-opacity-80 rounded-lg shadow-lg max-w-md mx-auto"
+      >
+        <h2 className="text-2xl font-bold text-white mb-6">Create New Race</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
+          <div className="flex justify-center">
+            {step > 1 && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                type="button"
+                onClick={() => setStep(step - 1)}
+                className="mr-2 bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+              >
+                Previous
+              </motion.button>
+            )}
+            {step < 3 ? (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                type="button"
+                onClick={handleNextStep}
+                className="bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+              >
+                Next Step
+              </motion.button>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                type="submit"
+                onClick={handleSubmit}
+                className="bg-green-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+              >
+                Create Race
+              </motion.button>
+            )}
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 };
