@@ -6,6 +6,7 @@ import { tracks } from './TrackData';
 import RaceStageForm from './RaceStageForm';
 import Toggle from './Toggle';
 import { useNavigate } from 'react-router-dom';
+import ClassDetailsForm from './ClassDetailsForm';
 
 const CreateRaceForm = ({ onCreateRace, userId }) => {
   const navigate = useNavigate();
@@ -44,7 +45,8 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       frrDisqualification: false,
       dynamicTrackRubber: true,
       startingTrackRubber: 50
-    }
+    },
+    classDetails: []
   });
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
@@ -146,13 +148,28 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
         formData.carClasses[0] &&
         (!isConfigRequired || formData.trackConfig)
       ) {
+        const classDetails = formData.carClasses.filter(cls => cls !== '').map(cls => ({
+          class: cls,
+          availableCars: [''],
+          restrictions: 'stock',
+          customBop: ''
+        }));
+        setFormData(prev => ({ ...prev, classDetails }));
         setStep(2);
         setAttemptedSubmit(false);
-      } else {
-        toast.error('Please fill in all required fields before proceeding.');
       }
-    } else if (step === 2) {
-      setStep(3);
+    } else if (step <= formData.classDetails.length + 1) {
+      const currentClassDetails = formData.classDetails[step - 2];
+      if (
+        currentClassDetails.availableCars[0] && 
+        currentClassDetails.restrictions &&
+        (currentClassDetails.restrictions !== 'custom' || currentClassDetails.customBop)
+      ) {
+        setStep(step + 1);
+        setAttemptedSubmit(false);
+      }
+    } else {
+      setStep(step + 1);
       setAttemptedSubmit(false);
     }
   };
@@ -487,7 +504,21 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       >
         <h2 className="text-2xl font-bold text-white mb-6">Create New Race</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
+          {step === 1 && renderStep1()}
+          {step > 1 && step <= formData.classDetails.length + 1 && (
+            <ClassDetailsForm
+              classData={formData.classDetails[step - 2]}
+              onChange={(field, value) => {
+                const newClassDetails = [...formData.classDetails];
+                newClassDetails[step - 2] = { ...newClassDetails[step - 2], [field]: value };
+                setFormData(prev => ({ ...prev, classDetails: newClassDetails }));
+              }}
+              attemptedSubmit={attemptedSubmit}
+            />
+          )}
+          {step > formData.classDetails.length + 1 && (
+            step === formData.classDetails.length + 2 ? renderStep2() : renderStep3()
+          )}
           <div className="flex justify-center">
             {step > 1 && (
               <motion.button
@@ -500,7 +531,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
                 Previous
               </motion.button>
             )}
-            {step < 3 ? (
+            {step < formData.classDetails.length + 3 ? (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -515,7 +546,6 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 type="submit"
-                onClick={handleSubmit}
                 className="bg-green-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
               >
                 Create Race
