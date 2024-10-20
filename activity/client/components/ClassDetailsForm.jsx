@@ -89,7 +89,7 @@ const ClassDetailsForm = ({ classData, onChange, attemptedSubmit }) => {
           <option value="Custom BoP">Custom BoP</option>
         </select>
       </div>
-      {classData.restrictions === 'custom' && (
+      {classData.restrictions === 'Custom BoP' && (
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">
             Custom BoP Details

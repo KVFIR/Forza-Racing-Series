@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { IoArrowBackOutline } from 'react-icons/io5';
 import { toast } from 'react-toastify';
-import { tracks } from './TrackData';
+import { trackList } from '../data/trackList';
 import RaceStageForm from './RaceStageForm';
 import Toggle from './Toggle';
 import { useNavigate } from 'react-router-dom';
@@ -49,15 +49,26 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
     classDetails: []
   });
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [trackSuggestions, setTrackSuggestions] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleTrackChange = (e) => {
-    const { value } = e.target;
+  const handleTrackChange = (value) => {
     setFormData(prev => ({ ...prev, track: value, trackConfig: '' }));
+    
+    const newSuggestions = trackList
+      .filter(track => track.name.toLowerCase().includes(value.toLowerCase()))
+      .map(track => track.name);
+    setTrackSuggestions(newSuggestions);
+
+    // Сбрасываем конфигурацию трека, если выбранный трек не имеет конфигураций
+    const selectedTrack = trackList.find(t => t.name === value);
+    if (!selectedTrack || !selectedTrack.configs.length) {
+      setFormData(prev => ({ ...prev, trackConfig: '' }));
+    }
   };
 
   const handleParticipantsChange = (increment) => {
@@ -138,7 +149,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
     e.preventDefault();
     setAttemptedSubmit(true);
     if (step === 1) {
-      const selectedTrack = tracks.find(t => t.name === formData.track);
+      const selectedTrack = trackList.find(t => t.name === formData.track);
       const isConfigRequired = selectedTrack && selectedTrack.configs.length > 0;
       if (
         formData.name &&
@@ -172,6 +183,11 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       setStep(step + 1);
       setAttemptedSubmit(false);
     }
+  };
+
+  const handleTrackSuggestionClick = (value) => {
+    setFormData(prev => ({ ...prev, track: value, trackConfig: '' }));
+    setTrackSuggestions([]);
   };
 
   const renderStep1 = () => (
@@ -266,45 +282,57 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       </div>
       <div className="flex space-x-4">
         <div className="flex-1">
-          <label htmlFor="track" className="block text-sm font-medium text-gray-300 mb-2">Track</label>
-          <select
-            id="track"
-            name="track"
-            value={formData.track}
-            onChange={handleTrackChange}
-            className={`w-full p-2 rounded bg-gray-700 text-white border ${
-              attemptedSubmit && !formData.track ? 'border-red-500' : 'border-gray-600'
-            } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50`}
-          >
-            <option value="">Select track</option>
-            {tracks.map(track => (
-              <option key={track.name} value={track.name}>{track.name}</option>
-            ))}
-          </select>
+          <label htmlFor="track" className="block text-sm font-medium text-gray-300 mb-1">Track</label>
+          <div className="relative">
+            <input
+              type="text"
+              id="track"
+              name="track"
+              value={formData.track}
+              onChange={(e) => handleTrackChange(e.target.value)}
+              placeholder="Enter track name"
+              className={`w-full p-2 rounded bg-gray-700 text-white border ${
+                attemptedSubmit && !formData.track ? 'border-red-500' : 'border-gray-600'
+              } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50`}
+            />
+            {trackSuggestions.length > 0 && (
+              <ul className="absolute z-10 w-full bg-gray-800 border border-gray-600 rounded mt-1 max-h-60 overflow-y-auto">
+                {trackSuggestions.map((suggestion, index) => (
+                  <li
+                    key={index}
+                    className="p-2 hover:bg-gray-700 cursor-pointer text-white"
+                    onClick={() => handleTrackSuggestionClick(suggestion)}
+                  >
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           {attemptedSubmit && !formData.track && (
             <p className="text-red-500 text-xs mt-1">Track is required</p>
           )}
         </div>
         <div className="flex-1">
           <label htmlFor="trackConfig" className="block text-sm font-medium text-gray-300 mb-2">
-            Track Configuration {formData.track && tracks.find(t => t.name === formData.track).configs.length > 0 ? '*' : ''}
+            Track Configuration {formData.track && trackList.find(t => t.name === formData.track)?.configs.length > 0 ? '*' : ''}
           </label>
           <select
             id="trackConfig"
             name="trackConfig"
             value={formData.trackConfig}
             onChange={handleChange}
-            disabled={!formData.track || tracks.find(t => t.name === formData.track).configs.length === 0}
+            disabled={!formData.track || !trackList.find(t => t.name === formData.track)?.configs.length}
             className={`w-full p-2 rounded bg-gray-700 text-white border ${
-              attemptedSubmit && formData.track && tracks.find(t => t.name === formData.track).configs.length > 0 && !formData.trackConfig ? 'border-red-500' : 'border-gray-600'
+              attemptedSubmit && formData.track && trackList.find(t => t.name === formData.track)?.configs.length > 0 && !formData.trackConfig ? 'border-red-500' : 'border-gray-600'
             } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50`}
           >
             <option value="">Select configuration</option>
-            {formData.track && tracks.find(t => t.name === formData.track).configs.map(config => (
+            {formData.track && trackList.find(t => t.name === formData.track)?.configs.map(config => (
               <option key={config} value={config}>{config}</option>
             ))}
           </select>
-          {attemptedSubmit && formData.track && tracks.find(t => t.name === formData.track).configs.length > 0 && !formData.trackConfig && (
+          {attemptedSubmit && formData.track && trackList.find(t => t.name === formData.track)?.configs.length > 0 && !formData.trackConfig && (
             <p className="text-red-500 text-xs mt-1">Track configuration is required for this track</p>
           )}
         </div>
