@@ -23,7 +23,7 @@ const EventList = () => {
       }
       const data = await response.json();
       
-      setRaces(data.races);
+      setRaces(data.races.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime)));
       setCurrentPage(data.currentPage);
       setTotalPages(data.totalPages);
     } catch (error) {
@@ -74,6 +74,14 @@ const EventList = () => {
       >
         <IoArrowBackOutline className="mr-2" />
         Back to Menu
+      </motion.button>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => fetchRaces(1)}
+        className="mb-4 ml-4 bg-blue-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+      >
+        Refresh List
       </motion.button>
       <motion.div
         initial={{ opacity: 0, y: 20 }}

@@ -126,6 +126,7 @@ function AppContent() {
         }} userId={auth.user.id} />} />
         <Route path="/list" element={<EventList />} />
         <Route path="/event/:id" element={<EventDetails />} />
+        <Route path="/races" element={<EventList />} />
       </Routes>
       <ToastContainer position="bottom-right" />
     </motion.div>

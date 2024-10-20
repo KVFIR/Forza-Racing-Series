@@ -111,8 +111,10 @@ app.post("/api/token", [
 
 // Обновленный эндпоинт для создания гонки
 app.post("/api/races", validateRace, async (req, res, next) => {
+  console.log('Received race creation request:', req.body);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.log('Validation errors:', errors.array());
     return res.status(400).json({ errors: errors.array() });
   }
 
@@ -121,7 +123,7 @@ app.post("/api/races", validateRace, async (req, res, next) => {
       ...req.body,
       dateTime: new Date(req.body.dateTime).toISOString()
     };
-    console.log('Attempting to create race:', raceData);
+    console.log('Processed race data:', raceData);
     const racesRef = ref(db, 'races');
     const newRaceRef = await push(racesRef, raceData);
     console.log('Race created successfully:', newRaceRef.key);
