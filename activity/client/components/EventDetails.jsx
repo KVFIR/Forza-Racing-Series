@@ -54,9 +54,9 @@ const EventDetails = () => {
       <div key={index} className="bg-gray-700 p-4 rounded-lg mb-4">
         <h4 className="text-lg font-semibold mb-2 text-white">{detail.class}</h4>
         <div className="space-y-2">
-          <p className="text-gray-300">Restrictions: {detail.restrictions}</p>
-          {detail.customBop && <p className="text-gray-300">Custom BoP: {detail.customBop}</p>}
-          <p className="text-gray-300">Available Cars:</p>
+          <p className="text-gray-300"><span className="font-semibold">Restrictions: </span>{detail.restrictions}</p>
+          {detail.customBop && <p className="text-gray-300"><span className="font-semibold">Custom BoP: </span>{detail.customBop}</p>}
+          <p className="text-gray-300"><span className="font-semibold">Available Cars:</span></p>
           <ul className="list-disc list-inside text-gray-300 pl-4">
             {detail.availableCars.filter(car => car !== "").map((car, idx) => (
               <li key={idx}>{car}</li>

@@ -151,7 +151,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
         const classDetails = formData.carClasses.filter(cls => cls !== '').map(cls => ({
           class: cls,
           availableCars: [''],
-          restrictions: 'stock',
+          restrictions: 'Full Stock',
           customBop: ''
         }));
         setFormData(prev => ({ ...prev, classDetails }));
