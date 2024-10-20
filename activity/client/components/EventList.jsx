@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { IoChevronBackOutline, IoChevronForwardOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoPeopleOutline, IoArrowBackOutline} from 'react-icons/io5';
+import { IoChevronBackOutline, IoChevronForwardOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoPeopleOutline, IoArrowBackOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { useMediaQuery } from 'react-responsive';
@@ -13,11 +13,12 @@ const EventList = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const isDesktop = useMediaQuery({ minWidth: 1024 });
+  const itemsPerPage = isDesktop ? 9 : 10;
 
   const fetchRaces = async (page = 1) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/.proxy/api/races?page=${page}&limit=${isDesktop ? 20 : 10}`);
+      const response = await fetch(`/.proxy/api/races?page=${page}&limit=${itemsPerPage}`);
       if (!response.ok) {
         throw new Error('Failed to fetch races');
       }
@@ -26,6 +27,9 @@ const EventList = () => {
       setRaces(data.races.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime)));
       setCurrentPage(data.currentPage);
       setTotalPages(data.totalPages);
+      console.log('Fetched races:', data.races);
+      console.log('Total pages:', data.totalPages);
+      console.log('Current page:', data.currentPage);
     } catch (error) {
       console.error('Error fetching races:', error);
       toast.error('Failed to load races. Please try again.');
@@ -75,14 +79,6 @@ const EventList = () => {
         <IoArrowBackOutline className="mr-2" />
         Back to Menu
       </motion.button>
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => fetchRaces(1)}
-        className="mb-4 ml-4 bg-blue-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-      >
-        Refresh List
-      </motion.button>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -128,21 +124,54 @@ const EventList = () => {
                 ))}
               </div>
             )}
-            {totalPages > 1 && (
+            {races.length > 0 && totalPages > 1 && (
               <div className="flex justify-center mt-6">
-                {[...Array(totalPages)].map((_, index) => (
-                  <motion.button
-                    key={index}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handlePageChange(index + 1)}
-                    className={`mx-1 px-3 py-1 rounded-lg ${
-                      currentPage === index + 1 ? 'bg-blue-500 text-white' : 'bg-gray-600 text-white'
-                    }`}
-                  >
-                    {index + 1}
-                  </motion.button>
-                ))}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`mx-1 px-3 py-1 rounded-lg ${
+                    currentPage === 1 ? 'bg-gray-500 text-gray-300' : 'bg-gray-600 text-white hover:bg-gray-500'
+                  }`}
+                >
+                  <IoChevronBackOutline />
+                </motion.button>
+                {[...Array(totalPages)].map((_, index) => {
+                  if (
+                    index === 0 ||
+                    index === totalPages - 1 ||
+                    (index >= currentPage - 2 && index <= currentPage + 2)
+                  ) {
+                    return (
+                      <motion.button
+                        key={index}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handlePageChange(index + 1)}
+                        className={`mx-1 px-3 py-1 rounded-lg ${
+                          currentPage === index + 1 ? 'bg-blue-500 text-white' : 'bg-gray-600 text-white hover:bg-gray-500'
+                        }`}
+                      >
+                        {index + 1}
+                      </motion.button>
+                    );
+                  } else if (index === currentPage - 3 || index === currentPage + 3) {
+                    return <span key={index} className="mx-1 text-white">...</span>;
+                  }
+                  return null;
+                })}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`mx-1 px-3 py-1 rounded-lg ${
+                    currentPage === totalPages ? 'bg-gray-500 text-gray-300' : 'bg-gray-600 text-white hover:bg-gray-500'
+                  }`}
+                >
+                  <IoChevronForwardOutline />
+                </motion.button>
               </div>
             )}
           </>

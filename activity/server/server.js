@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, push, get, remove, set, query, orderByKey, limitToFirst } from "firebase/database";
+import { getDatabase, ref, push, get, remove, set, query, orderByKey, limitToFirst, startAfter } from "firebase/database";
 import { body, validationResult } from 'express-validator';
 import fetch from 'node-fetch';
 import helmet from 'helmet';
@@ -139,24 +139,27 @@ app.get("/api/races", async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const startAt = (page - 1) * limit;
 
     const racesRef = ref(db, 'races');
-    const snapshot = await get(query(racesRef, orderByKey(), limitToFirst(startAt + limit)));
-    
+    const snapshot = await get(racesRef);
+
     const races = [];
-    let count = 0;
     snapshot.forEach((childSnapshot) => {
-      if (count >= startAt) {
-        races.push({ id: childSnapshot.key, ...childSnapshot.val() });
-      }
-      count++;
+      races.push({ id: childSnapshot.key, ...childSnapshot.val() });
     });
 
+    const totalCount = races.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+
+    const paginatedRaces = races.slice(startIndex, endIndex);
+
     res.json({
-      races,
+      races: paginatedRaces,
       currentPage: page,
-      totalPages: Math.ceil(count / limit)
+      totalPages: totalPages,
+      totalCount: totalCount
     });
   } catch (error) {
     next(error);
