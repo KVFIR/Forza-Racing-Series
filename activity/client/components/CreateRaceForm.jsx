@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IoCarSport, IoStopwatch, IoFlag, IoArrowBackOutline } from 'react-icons/io5';
+import { IoStopwatch, IoFlag, IoArrowBackOutline } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import { tracks } from './TrackData';
 import RaceStageForm from './RaceStageForm';
 import Toggle from './Toggle';
 import { useNavigate } from 'react-router-dom';
-import LoadingSpinner from './LoadingSpinner';
 
 const CreateRaceForm = ({ onCreateRace, userId }) => {
   const navigate = useNavigate();
@@ -51,7 +50,6 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       disableGhostEffect: false
     }
   });
-  const [errorMessage, setErrorMessage] = useState('');
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const handleChange = (e) => {
@@ -81,17 +79,6 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
         newCarClasses.push('');
       }
     }
-    setFormData(prev => ({ ...prev, carClasses: newCarClasses }));
-  };
-
-  const addCarClass = () => {
-    if (formData.carClasses.length < 4) {
-      setFormData(prev => ({ ...prev, carClasses: [...prev.carClasses, ''] }));
-    }
-  };
-
-  const removeCarClass = (index) => {
-    const newCarClasses = formData.carClasses.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, carClasses: newCarClasses }));
   };
 
@@ -217,30 +204,29 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-300 mb-2">Slots *</label>
           <div className="flex items-center">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button
+              type="button"
               onClick={() => handleParticipantsChange(-1)}
-              className="bg-gray-600 text-white p-2 rounded-l-lg h-10 flex items-center justify-center"
+              className="bg-gray-700 text-white p-2 rounded-l h-10 w-10 flex items-center justify-center"
             >
               -
-            </motion.button>
+            </button>
             <input
               type="number"
+              name="slots"
               value={formData.slots}
-              onChange={(e) => handleParticipantsChange(parseInt(e.target.value) - formData.slots)}
-              className={`w-16 text-center p-2 bg-gray-700 text-white border-t border-b border-gray-600 h-10 ${
-                attemptedSubmit && !formData.slots ? 'border-red-500' : ''
-              }`}
+              onChange={handleChange}
+              min="1"
+              max="24"
+              className="w-16 text-center bg-gray-700 text-white border-t border-b border-gray-600 h-10"
             />
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button
+              type="button"
               onClick={() => handleParticipantsChange(1)}
-              className="bg-gray-600 text-white p-2 rounded-r-lg h-10 flex items-center justify-center"
+              className="bg-gray-700 text-white p-2 rounded-r h-10 w-10 flex items-center justify-center"
             >
               +
-            </motion.button>
+            </button>
           </div>
           {attemptedSubmit && !formData.slots && (
             <p className="text-red-500 text-xs mt-1">Number of slots is required</p>
