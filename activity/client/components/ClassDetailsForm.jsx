@@ -1,20 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { carList } from '../data/carList';
 
 const ClassDetailsForm = ({ classData, onChange, attemptedSubmit }) => {
+  const [suggestions, setSuggestions] = useState(Array(classData.availableCars.length).fill([]));
+
   const handleCarChange = (index, value) => {
     let newCars = [...classData.availableCars];
     newCars[index] = value;
     
+    // Фильтруем suggestions для конкретного поля
+    const newSuggestions = carList.filter(car => 
+      car.toLowerCase().includes(value.toLowerCase())
+    );
+    const updatedSuggestions = [...suggestions];
+    updatedSuggestions[index] = newSuggestions;
+    setSuggestions(updatedSuggestions);
+
     // Удаляем пустые значения, кроме последнего
     newCars = newCars.filter((car, i) => car !== '' || i === newCars.length - 1);
     
     // Добавляем новое пустое поле, если последнее поле не пустое
     if (newCars[newCars.length - 1] !== '' && newCars.length < 10) {
       newCars.push('');
+      setSuggestions([...updatedSuggestions, []]);
     }
     
     onChange('availableCars', newCars);
+  };
+
+  const handleSuggestionClick = (index, value) => {
+    handleCarChange(index, value);
+    const updatedSuggestions = [...suggestions];
+    updatedSuggestions[index] = [];
+    setSuggestions(updatedSuggestions);
   };
 
   return (
@@ -25,18 +44,32 @@ const ClassDetailsForm = ({ classData, onChange, attemptedSubmit }) => {
           Available Cars
         </label>
         {classData.availableCars.map((car, index) => (
-          <input
-            key={index}
-            type="text"
-            value={car}
-            onChange={(e) => handleCarChange(index, e.target.value)}
-            className={`w-full p-2 mb-2 rounded bg-gray-700 text-white border ${
-              attemptedSubmit && index === 0 && !car ? 'border-red-500' : 'border-gray-600'
-            } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 ${
-              index === classData.availableCars.length - 1 && !car ? 'opacity-50' : ''
-            }`}
-            placeholder={`Car ${index + 1}`}
-          />
+          <div key={index} className="relative mb-2">
+            <input
+              type="text"
+              value={car}
+              onChange={(e) => handleCarChange(index, e.target.value)}
+              className={`w-full p-2 rounded bg-gray-700 text-white border ${
+                attemptedSubmit && index === 0 && !car ? 'border-red-500' : 'border-gray-600'
+              } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 ${
+                index === classData.availableCars.length - 1 && !car ? 'opacity-50' : ''
+              }`}
+              placeholder={`Car ${index + 1}`}
+            />
+            {suggestions[index] && suggestions[index].length > 0 && car && (
+              <ul className="absolute z-10 w-full bg-gray-800 border border-gray-600 rounded mt-1 max-h-60 overflow-y-auto">
+                {suggestions[index].map((suggestion, i) => (
+                  <li
+                    key={i}
+                    className="p-2 hover:bg-gray-700 cursor-pointer text-white"
+                    onClick={() => handleSuggestionClick(index, suggestion)}
+                  >
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ))}
         {attemptedSubmit && !classData.availableCars[0] && (
           <p className="text-red-500 text-xs mt-1">At least one car is required</p>
