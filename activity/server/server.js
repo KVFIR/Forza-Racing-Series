@@ -6,6 +6,8 @@ import { body, validationResult } from 'express-validator';
 import fetch from 'node-fetch';
 import helmet from 'helmet';
 import cors from 'cors';
+import http from 'http';
+import { WebSocketServer } from 'ws';
 
 dotenv.config({ path: "../.env" });
 
@@ -29,7 +31,7 @@ const db = getDatabase(firebaseApp);
 // Allow express to parse JSON bodies
 app.use(express.json());
 
-// Middleware для обработки ошибок
+// Middleware для обработки оши��ок
 const errorHandler = (err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
@@ -60,22 +62,65 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", "https:", "wss:", "http:", "ws:", "https://*.discordsays.com", "wss://*.discordsays.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "https:", "http:", "data:"],
+      fontSrc: ["'self'", "https:", "http:", "data:"],
+      mediaSrc: ["'self'", "https:", "http:", "data:"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: []
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
+
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws) => {
+  console.log('WebSocket connection established');
+
+  ws.on('message', (message) => {
+    console.log('Received message:', message);
+    // Здесь вы можете обрабатывать входящие сообщения
+  });
+
+  ws.on('close', () => {
+    console.log('WebSocket connection closed');
+  });
+});
 
 app.use('/.proxy', async (req, res, next) => {
-  const targetUrl = `http://localhost:3001${req.url}`;
+  const targetUrl = `https://1296426439725285437.discordsays.com${req.url}`;
   try {
-    const response = await fetch(targetUrl, {
+    const proxyRes = await fetch(targetUrl, {
       method: req.method,
-      headers: req.headers,
+      headers: {
+        ...req.headers,
+        'Host': '1296426439725285437.discordsays.com'
+      },
       body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
     });
-    res.status(response.status);
-    for (const [key, value] of response.headers.entries()) {
+
+    // Копируем заголовки ответа
+    Object.entries(proxyRes.headers.raw()).forEach(([key, value]) => {
       res.setHeader(key, value);
-    }
-    response.body.pipe(res);
+    });
+
+    // Устанавливаем статус ответа
+    res.status(proxyRes.status);
+
+    // Передаем тело ответа
+    proxyRes.body.pipe(res);
   } catch (error) {
+    console.error('Proxy error:', error);
     next(error);
   }
 });
@@ -193,7 +238,7 @@ app.put("/api/races/:id", validateRace, async (req, res, next) => {
   }
 });
 
-// Эндпоинт для получения деталей гонки
+// Эндпоинт для получеия деталей гонки
 app.get("/api/races/:id", async (req, res, next) => {
   try {
     const raceRef = ref(db, `races/${req.params.id}`);
@@ -232,6 +277,6 @@ app.get("/api/users/:id", async (req, res, next) => {
 
 app.use(errorHandler);
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });

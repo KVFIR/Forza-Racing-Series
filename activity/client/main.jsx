@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import ReactDOM from 'react-dom/client';
-import { DiscordSDK, patchUrlMappings } from "@discord/embedded-app-sdk";
+import { DiscordSDK } from "@discord/embedded-app-sdk";
+import { DiscordProxy } from '@robojs/patch';
 import MainMenu from './components/MainMenu';
 import CreateRaceForm from './components/CreateRaceForm';
 import EventList from './components/EventList';
@@ -18,11 +19,13 @@ const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
 
 async function setupApp() {
   if (isProd) {
-    patchUrlMappings([
-      {prefix: '/firebase', target: 'firebasedatabase.app'},
-      {prefix: '/.proxy', target: 'localhost:3001'},
-      // Добавьте здесь другие необходимые маппинги
-    ]);
+    await DiscordProxy.patch({
+      urlMappings: [
+        {prefix: '/firebase', target: 'firebasedatabase.app'},
+        {prefix: '/.proxy', target: 'localhost:3001'},
+        // Добавьте здесь другие необходимые маппинги
+      ]
+    });
   }
   await setupDiscordSdk();
 }

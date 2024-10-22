@@ -1,10 +1,11 @@
 import {defineConfig} from 'vite';
 import react from '@vitejs/plugin-react';
+import { DiscordProxy } from '@robojs/patch';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   envDir: '../',
-  plugins: [react()],
+  plugins: [react(), DiscordProxy.Vite()],
   server: {
     proxy: {
       '/api': {
