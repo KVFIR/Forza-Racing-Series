@@ -85,7 +85,7 @@ const EventList = () => {
         transition={{ duration: 0.5 }}
         className={`p-6 bg-gray-800 bg-opacity-80 rounded-lg shadow-lg mx-auto ${isDesktop ? 'max-w-6xl' : 'max-w-md'}`}
       >
-        <h2 className="text-2xl font-bold text-white mb-6">My Races</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">Community Events</h2>
         {isLoading ? (
           <LoadingSpinner />
         ) : (
