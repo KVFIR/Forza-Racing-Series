@@ -1,8 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { IoAdd, IoList } from 'react-icons/io5';
+import { useNavigate } from 'react-router-dom';
 
-const MainMenu = ({ onNavigate }) => {
+const MainMenu = () => {
+  const navigate = useNavigate();
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -16,7 +19,7 @@ const MainMenu = ({ onNavigate }) => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => onNavigate('/create')}
+          onClick={() => navigate('/create-race')}
           className="w-full bg-gray-500 bg-opacity-60 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400 flex items-center justify-center"
         >
           <IoAdd className="mr-2 text-2xl" /> Create Race
@@ -24,7 +27,7 @@ const MainMenu = ({ onNavigate }) => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => onNavigate('/list')}
+          onClick={() => navigate('/event-list')}
           className="w-full bg-gray-500 bg-opacity-60 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400 flex items-center justify-center"
         >
           <IoList className="mr-2 text-2xl" /> My Races

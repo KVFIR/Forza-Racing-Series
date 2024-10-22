@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import { DiscordProxy } from '@robojs/patch';
@@ -10,7 +10,8 @@ import "./style.css";
 import { motion } from 'framer-motion';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import UserProfile from './components/UserProfile';
 
 const isProd = import.meta.env.PROD;
 let auth;
@@ -76,72 +77,38 @@ async function setupDiscordSdk() {
   }
 }
 
-function reducer(state, action) {
-  switch (action.type) {
-    case 'SET_VIEW':
-      return { ...state, currentView: action.payload };
-    case 'ADD_EVENT':
-      return { ...state, events: [...state.events, action.payload] };
-    default:
-      throw new Error();
-  }
-}
-
-const viewComponents = {
-  menu: MainMenu,
-  createRace: CreateRaceForm,
-  eventList: EventList
-};
-
-const initialState = {
-  currentView: 'menu',
-  events: []
-};
-
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    setupApp().then(() => {
+      setIsAuthenticated(true);
+      if (auth && auth.user) {
+        setUser(auth.user);
+      }
+    });
+  }, []);
+
   return (
     <Router>
-      <AppContent />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="App container mx-auto p-4"
+      >
+        <ToastContainer />
+        {isAuthenticated && user && <UserProfile user={user} />}
+        <Routes>
+          <Route path="/" element={<MainMenu />} />
+          <Route path="/create-race" element={<CreateRaceForm />} />
+          <Route path="/event-list" element={<EventList />} />
+          <Route path="/event/:id" element={<EventDetails />} />
+        </Routes>
+      </motion.div>
     </Router>
   );
 }
 
-function AppContent() {
-  const navigate = useNavigate();
-  const [state, dispatch] = useReducer(reducer, initialState);
-
-  const handleNavigate = (path) => {
-    navigate(path);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="container mx-auto p-4"
-    >
-      <Routes>
-        <Route path="/" element={<MainMenu onNavigate={handleNavigate} />} />
-        <Route path="/create" element={<CreateRaceForm onCreateRace={(newRace) => {
-          dispatch({ type: 'ADD_EVENT', payload: newRace });
-          navigate('/');
-        }} userId={auth.user.id} />} />
-        <Route path="/list" element={<EventList />} />
-        <Route path="/event/:id" element={<EventDetails />} />
-        <Route path="/races" element={<EventList />} />
-      </Routes>
-      <ToastContainer position="bottom-right" />
-    </motion.div>
-  );
-}
-
-function renderApp() {
-  ReactDOM.createRoot(document.getElementById('app')).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
-}
-
-setupApp().then(renderApp).catch(console.error);
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);

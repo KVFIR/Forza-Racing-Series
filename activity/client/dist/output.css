@@ -702,6 +702,10 @@ video {
   height: auto;
 }
 
+.h-24 {
+  height: 6rem;
+}
+
 .max-h-60 {
   max-height: 15rem;
 }
@@ -732,6 +736,10 @@ video {
 
 .w-full {
   width: 100%;
+}
+
+.w-24 {
+  width: 6rem;
 }
 
 .max-w-3xl {
