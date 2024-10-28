@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import EditEventForm from './components/EditEventForm';
 
 const isProd = import.meta.env.PROD;
 let auth;
@@ -24,7 +25,7 @@ async function setupApp() {
       urlMappings: [
         {prefix: '/firebase', target: 'firebasedatabase.app'},
         {prefix: '/.proxy', target: 'localhost:3001'},
-        // Добавьте здесь другие необходимые маппинги
+        // Добавьте здесь другие нео��ходимые маппинги
       ]
     });
   }
@@ -105,6 +106,7 @@ function App() {
           <Route path="/event-list" element={<EventList />} />
           <Route path="/event/:id" element={<EventDetails user={user} />} />
           <Route path="/profile" element={<ProfilePage user={user} />} />
+          <Route path="/edit-event/:id" element={<EditEventForm user={user} />} />
         </Routes>
       </motion.div>
     </Router>
