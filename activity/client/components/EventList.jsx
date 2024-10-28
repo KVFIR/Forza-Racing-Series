@@ -106,7 +106,7 @@ const EventList = () => {
                     <h3 className="text-lg font-semibold text-white">{race.name}</h3>
                     <div className="flex items-center text-gray-300 mt-2">
                       <IoLocationOutline className="mr-2" />
-                      <span>{race.track}{race.trackConfig ? ` - ${race.trackConfig}` : ''}</span>
+                      <span>{race.track}</span>
                     </div>
                     <div className="flex items-center text-gray-300 mt-1">
                       <IoCarSportOutline className="mr-2" />
