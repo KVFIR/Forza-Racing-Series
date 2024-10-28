@@ -103,7 +103,7 @@ function App() {
           <Route path="/" element={<MainMenu />} />
           <Route path="/create-race" element={<CreateRaceForm />} />
           <Route path="/event-list" element={<EventList />} />
-          <Route path="/event/:id" element={<EventDetails />} />
+          <Route path="/event/:id" element={<EventDetails user={user} />} />
           <Route path="/profile" element={<ProfilePage user={user} />} />
         </Routes>
       </motion.div>

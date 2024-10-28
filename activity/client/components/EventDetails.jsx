@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { IoTrashOutline, IoArrowBackOutline, IoPencilOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoSettingsOutline, IoPeopleOutline, IoFlagOutline, IoSpeedometerOutline, IoTimeOutline, IoCloudOutline, IoChevronDownOutline, IoChevronUpOutline } from 'react-icons/io5';
+import { IoTrashOutline, IoArrowBackOutline, IoPencilOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoSettingsOutline, IoPeopleOutline, IoFlagOutline, IoSpeedometerOutline, IoTimeOutline, IoCloudOutline, IoChevronDownOutline, IoChevronUpOutline, IoPersonOutline } from 'react-icons/io5';
 import LoadingSpinner from './LoadingSpinner';
 
-const EventDetails = () => {
+const EventDetails = ({ user }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [creatorInfo, setCreatorInfo] = useState(null);
 
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -32,6 +33,45 @@ const EventDetails = () => {
 
     fetchEventDetails();
   }, [id]);
+
+  useEffect(() => {
+    const fetchCreatorInfo = async () => {
+      if (event && event.createdBy) {
+        console.log('Fetching creator info for:', event.createdBy); // Добавим логирование
+        try {
+          if (user && user.id === event.createdBy) {
+            console.log('Using current user info:', user);
+            setCreatorInfo(user);
+          } else {
+            const response = await fetch(`/api/user/${event.createdBy}`);
+            console.log('Creator info response:', response); // Добавим логирование
+            
+            if (!response.ok) {
+              throw new Error(`Failed to fetch creator info: ${response.status}`);
+            }
+            
+            const userData = await response.json();
+            console.log('Received creator data:', userData); // Добавим логирование
+            
+            setCreatorInfo(userData);
+          }
+        } catch (error) {
+          console.error('Error fetching creator info:', error);
+          const defaultAvatarIndex = (BigInt(event.createdBy) >> 22n) % 6n;
+          setCreatorInfo({
+            id: event.createdBy,
+            username: 'Unknown User',
+            avatar: null,
+            defaultAvatarUrl: `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`
+          });
+        }
+      }
+    };
+
+    if (event) {
+      fetchCreatorInfo();
+    }
+  }, [event, user]);
 
   const handleDelete = async () => {
     try {
@@ -132,7 +172,23 @@ const EventDetails = () => {
           <p className="text-white">Event not found.</p>
         ) : (
           <>
-            <h2 className="text-3xl font-bold text-white mb-6">{event.name}</h2>
+            <h2 className="text-3xl font-bold text-white mb-2">{event.name}</h2>
+            
+            {creatorInfo && (
+              <div className="flex items-center text-gray-300 mb-6">
+                <IoPersonOutline className="mr-2 text-xl" />
+                <span>Created by: </span>
+                <img 
+                  src={creatorInfo.avatar 
+                    ? `https://cdn.discordapp.com/avatars/${creatorInfo.id}/${creatorInfo.avatar}.png?size=256`
+                    : creatorInfo.defaultAvatarUrl
+                  } 
+                  alt="Creator avatar" 
+                  className="w-6 h-6 rounded-full mx-2"
+                />
+                <span>{creatorInfo.username}</span>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="space-y-4">

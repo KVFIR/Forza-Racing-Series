@@ -76,6 +76,23 @@ Discord Activities are web applications that can be run within Discord. Our appl
 - `client/components/`: React components for the UI
 - `client/main.jsx`: Main entry point for the client application
 - `server/server.js`: Express server setup and API endpoints
+- `server/services/`: Service layer for external APIs and business logic
+
+## ES Modules
+
+This project uses ES Modules (ESM) instead of CommonJS. Key differences:
+
+```javascript
+// ES modules (used in this project)
+import express from 'express';
+import { someFunction } from './utils.js';
+export default someFunction;
+
+// Instead of CommonJS
+const express = require('express');
+const { someFunction } = require('./utils');
+module.exports = someFunction;
+```
 
 ## Features
 

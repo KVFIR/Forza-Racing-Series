@@ -8,11 +8,13 @@ import helmet from 'helmet';
 import cors from 'cors';
 import http from 'http';
 import { WebSocketServer } from 'ws';
+import { config } from './config.js';
+import discordService from './services/discordService.js';
 
 dotenv.config({ path: "../.env" });
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = config.port;
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -31,7 +33,7 @@ const db = getDatabase(firebaseApp);
 // Allow express to parse JSON bodies
 app.use(express.json());
 
-// Middleware для обработки оши��ок
+// Middleware для обработки ошиок
 const errorHandler = (err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
@@ -272,6 +274,50 @@ app.get("/api/users/:id", async (req, res, next) => {
     }
   } catch (error) {
     next(error);
+  }
+});
+
+// Добавить в начало файла после импортов
+if (!process.env.DISCORD_TOKEN) {
+  console.error('DISCORD_TOKEN is not set in .env file');
+  process.exit(1);
+}
+
+// Проверим токен, попробовав получить информацию о боте
+try {
+  const response = await fetch('https://discord.com/api/v10/users/@me', {
+    headers: {
+      Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+    },
+  });
+  
+  if (!response.ok) {
+    console.error('Invalid Discord token. Please check your .env file.');
+    process.exit(1);
+  }
+  
+  const botData = await response.json();
+  console.log('Bot authenticated as:', botData.username);
+} catch (error) {
+  console.error('Failed to authenticate bot:', error);
+  process.exit(1);
+}
+
+// Добавить после настройки CORS
+app.get("/api/user/:userId", async (req, res) => {
+  try {
+    const userData = await discordService.getUserInfo(req.params.userId);
+    res.json(userData);
+  } catch (error) {
+    console.error('Error fetching Discord user:', error);
+    // Используем метод из сервиса для получения индекса дефолтного аватара
+    const defaultAvatarIndex = discordService.getDefaultAvatarIndex(req.params.userId);
+    res.status(500).json({
+      id: req.params.userId,
+      username: 'Unknown User',
+      avatar: null,
+      defaultAvatarUrl: `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`
+    });
   }
 });
 
