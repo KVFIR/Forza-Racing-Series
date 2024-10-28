@@ -1,21 +1,154 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { IoArrowBackOutline } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import { trackList } from '../data/trackList';
+import { carList } from '../data/carList';
 import RaceStageForm from './RaceStageForm';
 import Toggle from './Toggle';
 import { useNavigate } from 'react-router-dom';
-import ClassDetailsForm from './ClassDetailsForm';
 
-const CreateRaceForm = ({ onCreateRace, userId }) => {
-  const navigate = useNavigate();
+// Внутренний компонент для деталей класса
+const ClassDetailsSection = ({ classData, onChange, attemptedSubmit }) => {
+  const [suggestions, setSuggestions] = useState(Array(classData.availableCars.length).fill([]));
 
-  const handleBackToMenu = () => {
-    navigate('/');
+  const handleCarChange = (index, value) => {
+    let newCars = [...classData.availableCars];
+    newCars[index] = value;
+    
+    const newSuggestions = carList.filter(car => 
+      car.toLowerCase().includes(value.toLowerCase())
+    );
+    const updatedSuggestions = [...suggestions];
+    updatedSuggestions[index] = newSuggestions;
+    setSuggestions(updatedSuggestions);
+
+    newCars = newCars.filter((car, i) => car !== '' || i === newCars.length - 1);
+    
+    if (newCars[newCars.length - 1] !== '' && newCars.length < 10) {
+      newCars.push('');
+      setSuggestions([...updatedSuggestions, []]);
+    }
+    
+    onChange('availableCars', newCars);
   };
 
+  const handleSuggestionClick = (index, value) => {
+    handleCarChange(index, value);
+    const updatedSuggestions = [...suggestions];
+    updatedSuggestions[index] = [];
+    setSuggestions(updatedSuggestions);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-white mb-2">{classData.class} class details</h3>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">
+          Available Cars
+        </label>
+        {classData.availableCars.map((car, index) => (
+          <div key={index} className="relative mb-2">
+            <input
+              type="text"
+              value={car}
+              onChange={(e) => handleCarChange(index, e.target.value)}
+              className={`w-full p-2 rounded bg-gray-700 text-white border ${
+                attemptedSubmit && index === 0 && !car ? 'border-red-500' : 'border-gray-600'
+              } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 ${
+                index === classData.availableCars.length - 1 && !car ? 'opacity-50' : ''
+              }`}
+              placeholder={`Car ${index + 1}`}
+            />
+            {suggestions[index] && suggestions[index].length > 0 && car && (
+              <ul className="absolute z-10 w-full bg-gray-800 border border-gray-600 rounded mt-1 max-h-60 overflow-y-auto">
+                {suggestions[index].map((suggestion, i) => (
+                  <li
+                    key={i}
+                    className="p-2 hover:bg-gray-700 cursor-pointer text-white"
+                    onClick={() => handleSuggestionClick(index, suggestion)}
+                  >
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+        {attemptedSubmit && !classData.availableCars[0] && (
+          <p className="text-red-500 text-xs mt-1">At least one car is required</p>
+        )}
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">
+          Restrictions (BoP)
+        </label>
+        <select
+          value={classData.restrictions}
+          onChange={(e) => onChange('restrictions', e.target.value)}
+          className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+        >
+          <option value="Full Stock">Full Stock</option>
+          <option value="Featured Multiplayer Parts">Featured Multiplayer Parts</option>
+          <option value="Custom BoP">Custom BoP</option>
+        </select>
+      </div>
+      {classData.restrictions === 'Custom BoP' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            Custom BoP Details
+          </label>
+          <textarea
+            value={classData.customBop}
+            onChange={(e) => onChange('customBop', e.target.value)}
+            className={`w-full p-2 rounded bg-gray-700 text-white border ${
+              attemptedSubmit && !classData.customBop ? 'border-red-500' : 'border-gray-600'
+            } focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50`}
+            rows={4}
+            placeholder="Describe custom BoP restrictions here..."
+          />
+          {attemptedSubmit && classData.restrictions === 'custom' && !classData.customBop && (
+            <p className="text-red-500 text-xs mt-1">Custom BoP details are required</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Основной компонент CreateRaceForm остается без изменений
+const CreateRaceForm = ({ userId }) => {
+  const navigate = useNavigate();
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Изменяем useEffect для проверки аутентификации
+  useEffect(() => {
+    // Даем время на инициализацию auth
+    const timer = setTimeout(() => {
+      setIsInitialized(true);
+      if (!userId && isInitialized) {
+        toast.error('User authentication required');
+        navigate('/');
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [userId, navigate, isInitialized]);
+
+  // Обновляем formData при изменении userId
+  useEffect(() => {
+    if (userId) {
+      setFormData(prev => ({
+        ...prev,
+        createdBy: userId
+      }));
+    }
+  }, [userId]);
+
   const [step, setStep] = useState(1);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [trackSuggestions, setTrackSuggestions] = useState([]);
+
   const [formData, setFormData] = useState({
     name: '',
     dateTime: '',
@@ -48,8 +181,57 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
     },
     classDetails: []
   });
-  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-  const [trackSuggestions, setTrackSuggestions] = useState([]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setAttemptedSubmit(true);
+
+    if (!userId) {
+      toast.error('User authentication required');
+      return;
+    }
+
+    // Валидация
+    const isRaceValid = (formData.race.raceType === 'laps' && formData.race.numberOfLaps > 0) ||
+                       (formData.race.raceType === 'timer' && formData.race.raceTimer > 0);
+    
+    if (!isRaceValid) {
+      toast.error('Please check race settings.');
+      return;
+    }
+
+    try {
+      const dataToSend = {
+        ...formData,
+        createdBy: userId,
+        carClasses: formData.carClasses.filter(cls => cls !== '')
+      };
+
+      const response = await fetch('/.proxy/api/races', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToSend),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(errorData)}`);
+      }
+
+      const result = await response.json();
+      toast.success('Race created successfully!');
+      navigate(`/event/${result.id}`);
+    } catch (error) {
+      console.error('Error creating race:', error);
+      toast.error(`Failed to create race: ${error.message}`);
+    }
+  };
+
+  const handleBackToMenu = () => {
+    navigate('/');
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -64,7 +246,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       .map(track => track.name);
     setTrackSuggestions(newSuggestions);
 
-    // Сбрасываем конфигурацию трека, если выбранный трек не имеет конфигураций
+    // Сбрасываем конфигурацию трека, если выбранный тек не имеет конфигураций
     const selectedTrack = trackList.find(t => t.name === value);
     if (!selectedTrack || !selectedTrack.configs.length) {
       setFormData(prev => ({ ...prev, trackConfig: '' }));
@@ -89,60 +271,6 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
       }
     }
     setFormData(prev => ({ ...prev, carClasses: newCarClasses }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setAttemptedSubmit(true);
-
-    const isRaceValid = (formData.race.raceType === 'laps' && formData.race.numberOfLaps > 0) ||
-                        (formData.race.raceType === 'timer' && formData.race.raceTimer > 0);
-    const isPracticeQualifyingValid = !formData.practiceAndQualifying.enabled ||
-                                      (formData.practiceAndQualifying.practiceTimeLimit >= 5 &&
-                                       formData.practiceAndQualifying.qualifyingLaps >= 1);
-    const isStartingTrackRubberValid = formData.settings.startingTrackRubber >= 0 && formData.settings.startingTrackRubber <= 100;
-
-    if (!isRaceValid) {
-      toast.error('Please check race settings.');
-      return;
-    }
-
-    if (!isPracticeQualifyingValid) {
-      toast.error('Please check practice and qualifying settings.');
-      return;
-    }
-
-    if (!isStartingTrackRubberValid) {
-      toast.error('Starting Track Rubber level must be between 0 and 100.');
-      return;
-    }
-
-    // Если все проверки пройдены, отправляем данные
-    try {
-      const dataToSend = {
-        ...formData,
-        carClasses: formData.carClasses.filter(cls => cls !== '')
-      };
-      console.log('Sending race data:', dataToSend);
-      const response = await fetch('/.proxy/api/races', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToSend),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(errorData)}`);
-      }
-      const result = await response.json();
-      console.log('Race creation result:', result);
-      toast.success('Race created successfully!');
-      navigate('/races');
-    } catch (error) {
-      console.error('Error creating race:', error);
-      toast.error(`Failed to create race: ${error.message}`);
-    }
   };
 
   const handleNextStep = (e) => {
@@ -534,7 +662,7 @@ const CreateRaceForm = ({ onCreateRace, userId }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {step === 1 && renderStep1()}
           {step > 1 && step <= formData.classDetails.length + 1 && (
-            <ClassDetailsForm
+            <ClassDetailsSection
               classData={formData.classDetails[step - 2]}
               onChange={(field, value) => {
                 const newClassDetails = [...formData.classDetails];

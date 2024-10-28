@@ -25,7 +25,7 @@ async function setupApp() {
       urlMappings: [
         {prefix: '/firebase', target: 'firebasedatabase.app'},
         {prefix: '/.proxy', target: 'localhost:3001'},
-        // Добавьте здесь другие нео��ходимые маппинги
+        // Добавьте здесь другие неоходимые маппинги
       ]
     });
   }
@@ -102,7 +102,7 @@ function App() {
         <ToastContainer />
         <Routes>
           <Route path="/" element={<MainMenu />} />
-          <Route path="/create-race" element={<CreateRaceForm />} />
+          <Route path="/create-race" element={<CreateRaceForm userId={user?.id} />} />
           <Route path="/event-list" element={<EventList />} />
           <Route path="/event/:id" element={<EventDetails user={user} />} />
           <Route path="/profile" element={<ProfilePage user={user} />} />

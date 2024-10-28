@@ -723,6 +723,10 @@ video {
   max-height: 15rem;
 }
 
+.min-h-screen {
+  min-height: 100vh;
+}
+
 .w-10 {
   width: 2.5rem;
 }
@@ -888,6 +892,11 @@ video {
 .rounded-r {
   border-top-right-radius: 0.25rem;
   border-bottom-right-radius: 0.25rem;
+}
+
+.rounded-b {
+  border-bottom-right-radius: 0.25rem;
+  border-bottom-left-radius: 0.25rem;
 }
 
 .border {
