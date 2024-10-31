@@ -244,7 +244,8 @@ const MotorsportCreateForm = ({ userId }) => {
         transition={{ duration: 0.5 }}
         className="p-6 bg-gray-800 bg-opacity-80 rounded-lg shadow-lg max-w-4xl mx-auto"
       >
-        <h2 className="text-2xl font-bold text-white mb-6">Create New Race</h2>
+        <h2 className="text-2xl font-bold text-white mb-1">Create New Event</h2>
+        <h3 className="text-xl text-white mb-6">Forza Motorsport</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           {step === 1 && (
             <FMstep1 

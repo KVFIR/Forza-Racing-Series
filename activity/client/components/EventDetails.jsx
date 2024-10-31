@@ -94,8 +94,10 @@ const EventDetails = ({ user }) => {
       <div key={index} className="bg-gray-700 p-4 rounded-lg mb-4">
         <h4 className="text-lg font-semibold mb-2 text-white">{detail.class}</h4>
         <div className="space-y-2">
-          <p className="text-gray-300"><span className="font-semibold">Restrictions: </span>{detail.restrictions}</p>
-          {detail.customBop && <p className="text-gray-300"><span className="font-semibold">Custom BoP: </span>{detail.customBop}</p>}
+          <p className="text-gray-300">
+            <span className="font-semibold">Restrictions: </span>
+            {detail.customBop ? detail.customBop : detail.restrictions}
+          </p>
           <p className="text-gray-300"><span className="font-semibold">Available Cars:</span></p>
           <ul className="list-disc list-inside text-gray-300 pl-4">
             {detail.availableCars.filter(car => car !== "").map((car, idx) => (
@@ -115,9 +117,22 @@ const EventDetails = ({ user }) => {
           className="flex items-center justify-between w-full text-lg font-semibold text-white mb-2"
         >
           <span>Race Settings</span>
-          {showSettings ? <IoChevronUpOutline /> : <IoChevronDownOutline />}
+          <motion.div
+            animate={{ rotate: showSettings ? 180 : 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <IoChevronDownOutline />
+          </motion.div>
         </button>
-        {showSettings && (
+        <motion.div
+          animate={{
+            height: showSettings ? "auto" : 0,
+            opacity: showSettings ? 1 : 0
+          }}
+          initial={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          style={{ overflow: "hidden" }}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
             <div className="text-gray-300">
               <span className="font-semibold">Car to Car Collisions:</span> {settings.carToCarCollisions}
@@ -144,7 +159,7 @@ const EventDetails = ({ user }) => {
               <span className="font-semibold">Tire Wear:</span> {settings.tireWear}
             </div>
           </div>
-        )}
+        </motion.div>
       </div>
     );
   };
@@ -176,8 +191,7 @@ const EventDetails = ({ user }) => {
             
             {creatorInfo && (
               <div className="flex items-center text-gray-300 mb-6">
-                <IoPersonOutline className="mr-2 text-xl" />
-                <span>Created by: </span>
+                <span>Created by </span>
                 <img 
                   src={creatorInfo.avatar 
                     ? `https://cdn.discordapp.com/avatars/${creatorInfo.id}/${creatorInfo.avatar}.png?size=256`
@@ -190,12 +204,13 @@ const EventDetails = ({ user }) => {
               </div>
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="flex items-center text-gray-300 col-span-2">
+                <IoLocationOutline className="mr-2 text-xl" />
+                <span>{event.track}{event.trackConfig ? `, ${event.trackConfig}` : ''}</span>
+              </div>
+              
               <div className="space-y-4">
-                <div className="flex items-center text-gray-300">
-                  <IoLocationOutline className="mr-2 text-xl" />
-                  <span>{event.track}{event.trackConfig ? ` - ${event.trackConfig}` : ''}</span>
-                </div>
                 <div className="flex items-center text-gray-300">
                   <IoCarSportOutline className="mr-2 text-xl" />
                   <span>{event.carClasses.join(', ')}</span>
@@ -209,7 +224,6 @@ const EventDetails = ({ user }) => {
                   <span>{event.slots} slots</span>
                 </div>
               </div>
-              
               <div className="space-y-4">
                 <div className="flex items-center text-gray-300">
                   <IoTimeOutline className="mr-2 text-xl" />
