@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { IoArrowBackOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
-import LoadingSpinner from './LoadingSpinner';
+import LoadingSpinner from './common/LoadingSpinner';
 
 const ProfilePage = ({ user }) => {
   const navigate = useNavigate();

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { IoTrashOutline, IoArrowBackOutline, IoPencilOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoSettingsOutline, IoPeopleOutline, IoFlagOutline, IoSpeedometerOutline, IoTimeOutline, IoCloudOutline, IoChevronDownOutline, IoChevronUpOutline, IoPersonOutline } from 'react-icons/io5';
-import LoadingSpinner from './LoadingSpinner';
+import LoadingSpinner from './common/LoadingSpinner';
 
 const EventDetails = ({ user }) => {
   const { id } = useParams();

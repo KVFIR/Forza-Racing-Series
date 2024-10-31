@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { carList } from '../data/carList';
+import { carList } from './data/carList';
 
-const ClassDetailsForm = ({ classData, onChange, attemptedSubmit }) => {
+const FMstep2 = ({ classData, onChange, attemptedSubmit }) => {
   const [suggestions, setSuggestions] = useState(Array(classData.availableCars.length).fill([]));
 
   const handleCarChange = (index, value) => {
     let newCars = [...classData.availableCars];
     newCars[index] = value;
     
-    // Фильтруем suggestions для конкретного поля
     const newSuggestions = carList.filter(car => 
       car.toLowerCase().includes(value.toLowerCase())
     );
@@ -17,10 +15,8 @@ const ClassDetailsForm = ({ classData, onChange, attemptedSubmit }) => {
     updatedSuggestions[index] = newSuggestions;
     setSuggestions(updatedSuggestions);
 
-    // Удаляем пустые значения, кроме последнего
     newCars = newCars.filter((car, i) => car !== '' || i === newCars.length - 1);
     
-    // Добавляем новое пустое поле, если последнее поле не пустое
     if (newCars[newCars.length - 1] !== '' && newCars.length < 10) {
       newCars.push('');
       setSuggestions([...updatedSuggestions, []]);
@@ -103,7 +99,7 @@ const ClassDetailsForm = ({ classData, onChange, attemptedSubmit }) => {
             rows={4}
             placeholder="Describe custom BoP restrictions here..."
           />
-          {attemptedSubmit && classData.restrictions === 'custom' && !classData.customBop && (
+          {attemptedSubmit && classData.restrictions === 'Custom BoP' && !classData.customBop && (
             <p className="text-red-500 text-xs mt-1">Custom BoP details are required</p>
           )}
         </div>
@@ -112,4 +108,4 @@ const ClassDetailsForm = ({ classData, onChange, attemptedSubmit }) => {
   );
 };
 
-export default ClassDetailsForm;
+export default FMstep2;

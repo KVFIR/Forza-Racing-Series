@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import { DiscordProxy } from '@robojs/patch';
 import MainMenu from './components/MainMenu';
-import CreateRaceForm from './components/CreateRaceForm';
+import MotorsportCreateForm from './components/MotorsportCreateForm';
 import EventList from './components/EventList';
 import EventDetails from './components/EventDetails';
 import ProfilePage from './components/ProfilePage';
@@ -12,7 +12,6 @@ import { motion } from 'framer-motion';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import EditEventForm from './components/EditEventForm';
 
 const isProd = import.meta.env.PROD;
 let auth;
@@ -102,11 +101,10 @@ function App() {
         <ToastContainer />
         <Routes>
           <Route path="/" element={<MainMenu />} />
-          <Route path="/create-race" element={<CreateRaceForm userId={user?.id} />} />
+          <Route path="/create-race" element={<MotorsportCreateForm userId={user?.id} />} />
           <Route path="/event-list" element={<EventList />} />
           <Route path="/event/:id" element={<EventDetails user={user} />} />
           <Route path="/profile" element={<ProfilePage user={user} />} />
-          <Route path="/edit-event/:id" element={<EditEventForm user={user} />} />
         </Routes>
       </motion.div>
     </Router>

@@ -1,5 +1,5 @@
 import React from 'react';
-import Toggle from './Toggle';
+import Toggle from './common/Toggle';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const startingTimeOptions = [

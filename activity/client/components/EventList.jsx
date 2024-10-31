@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { IoChevronBackOutline, IoChevronForwardOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoPeopleOutline, IoArrowBackOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
-import LoadingSpinner from './LoadingSpinner';
+import LoadingSpinner from './common/LoadingSpinner';
 import { useMediaQuery } from 'react-responsive';
 
 const EventList = () => {
