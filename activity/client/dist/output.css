@@ -872,6 +872,10 @@ video {
   overflow-y: auto;
 }
 
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
+
 .rounded {
   border-radius: 0.25rem;
 }
@@ -1040,6 +1044,10 @@ video {
 
 .pl-4 {
   padding-left: 1rem;
+}
+
+.pl-6 {
+  padding-left: 1.5rem;
 }
 
 .text-center {

@@ -2,7 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { IoTrashOutline, IoArrowBackOutline, IoPencilOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoSettingsOutline, IoPeopleOutline, IoFlagOutline, IoSpeedometerOutline, IoTimeOutline, IoCloudOutline, IoChevronDownOutline, IoChevronUpOutline, IoPersonOutline } from 'react-icons/io5';
+import {
+  IoTrashOutline,
+  IoArrowBackOutline, 
+  IoPencilOutline,
+  IoCalendarOutline,
+  IoLocationOutline,
+  IoSettingsOutline,
+  IoPeopleOutline,
+  IoTimeOutline,
+  IoCloudOutline,
+  IoChevronDownOutline,
+  IoCarSportOutline,
+  IoFlagOutline
+} from 'react-icons/io5';
 import LoadingSpinner from './common/LoadingSpinner';
 
 const EventDetails = ({ user }) => {
@@ -93,17 +106,32 @@ const EventDetails = ({ user }) => {
     return classDetails.map((detail, index) => (
       <div key={index} className="bg-gray-700 p-4 rounded-lg mb-4">
         <h4 className="text-lg font-semibold mb-2 text-white">{detail.class}</h4>
-        <div className="space-y-2">
-          <p className="text-gray-300">
-            <span className="font-semibold">Restrictions: </span>
-            {detail.customBop ? detail.customBop : detail.restrictions}
-          </p>
-          <p className="text-gray-300"><span className="font-semibold">Available Cars:</span></p>
-          <ul className="list-disc list-inside text-gray-300 pl-4">
-            {detail.availableCars.filter(car => car !== "").map((car, idx) => (
-              <li key={idx}>{car}</li>
-            ))}
-          </ul>
+        <div className="space-y-4">
+          <div className="text-gray-300">
+            <div className="flex items-center mb-2">
+              <IoCarSportOutline className="mr-2 text-xl" />
+              <span className="font-semibold">Available Cars:</span>
+            </div>
+            <ul className="list-disc list-inside text-gray-300 pl-6">
+              {detail.availableCars.filter(car => car !== "").map((car, idx) => (
+                <li key={idx}>{car}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="text-gray-300">
+            <div className="flex items-center mb-2">
+              <IoFlagOutline className="mr-2 text-xl" />
+              <span className="font-semibold">Restrictions:</span>
+            </div>
+            {detail.restrictions === 'Custom BoP' ? (
+              <div className="whitespace-pre-wrap pl-6">
+                {detail.customBop}
+              </div>
+            ) : (
+              <div className="pl-6">{detail.restrictions}</div>
+            )}
+          </div>
         </div>
       </div>
     ));
