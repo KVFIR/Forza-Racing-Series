@@ -7,7 +7,7 @@ import MotorsportCreateForm from './components/MotorsportCreateForm';
 import EventList from './components/EventList';
 import EventDetails from './components/EventDetails';
 import ProfilePage from './components/ProfilePage';
-import MotorsportEditForm from './components/MotorsportEditForm';
+import GameSelector from './components/GameSelector';
 import "./style.css";
 import { motion } from 'framer-motion';
 import { ToastContainer } from 'react-toastify';
@@ -91,6 +91,15 @@ function App() {
     });
   }, []);
 
+  const handleGameSelect = (gameId) => {
+    if (gameId === 'fm') {
+      navigate('/create-motorsport');
+    } else if (gameId === 'fh5') {
+      // Пока что перенаправляем на FM, так как FH5 не реализован
+      navigate('/create-motorsport');
+    }
+  };
+
   return (
     <Router>
       <motion.div
@@ -102,11 +111,11 @@ function App() {
         <ToastContainer />
         <Routes>
           <Route path="/" element={<MainMenu />} />
-          <Route path="/create-race" element={<MotorsportCreateForm userId={user?.id} />} />
+          <Route path="/create-race" element={<GameSelector onSelect={handleGameSelect} />} />
+          <Route path="/create-motorsport" element={<MotorsportCreateForm userId={user?.id} />} />
           <Route path="/event-list" element={<EventList />} />
           <Route path="/event/:id" element={<EventDetails user={user} />} />
           <Route path="/profile" element={<ProfilePage user={user} />} />
-          <Route path="/edit-event/:id" element={<MotorsportEditForm userId={user?.id} />} />
         </Routes>
       </motion.div>
     </Router>
