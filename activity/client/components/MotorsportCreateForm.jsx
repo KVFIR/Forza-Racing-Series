@@ -232,11 +232,11 @@ const MotorsportCreateForm = ({ userId }) => {
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={handleBackToMenu}
+        onClick={() => navigate('/create-race')}
         className="mb-4 flex items-center bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
       >
         <IoArrowBackOutline className="mr-2" />
-        Back to Menu
+        Back to Game Selection
       </motion.button>
 
       <motion.div
@@ -245,7 +245,7 @@ const MotorsportCreateForm = ({ userId }) => {
         transition={{ duration: 0.5 }}
         className="p-6 bg-gray-800 bg-opacity-80 rounded-lg shadow-lg max-w-4xl mx-auto"
       >
-        <h2 className="text-2xl font-bold text-white mb-1">Create New Event</h2>
+        <h2 className="text-2xl font-bold text-white mb-1">Create Event</h2>
         <h3 className="text-xl text-white mb-6">Forza Motorsport</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           {step === 1 && (

@@ -20,6 +20,15 @@ const GameSelector = ({ onSelect }) => {
     }
   ];
 
+  const handleSelect = (gameId) => {
+    if (gameId === 'fm') {
+      navigate('/create-motorsport');
+    } else if (gameId === 'fh5') {
+      navigate('/create-horizon');
+    }
+    onSelect(gameId);
+  };
+
   return (
     <div>
       <motion.button
@@ -45,7 +54,7 @@ const GameSelector = ({ onSelect }) => {
               key={game.id}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onSelect(game.id)}
+              onClick={() => handleSelect(game.id)}
               className="h-32 cursor-pointer flex items-center justify-center p-4"
             >
               <img 

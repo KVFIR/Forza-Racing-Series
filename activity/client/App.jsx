@@ -4,6 +4,7 @@ import { DiscordSDK } from "@discord/embedded-app-sdk";
 import { DiscordProxy } from '@robojs/patch';
 import MainMenu from './components/MainMenu';
 import MotorsportCreateForm from './components/MotorsportCreateForm';
+import HorizonCreateForm from './components/HorizonCreateForm';
 import EventList from './components/EventList';
 import EventDetails from './components/EventDetails';
 import ProfilePage from './components/ProfilePage';
@@ -12,7 +13,8 @@ import "./style.css";
 import { motion } from 'framer-motion';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const isProd = import.meta.env.PROD;
 let auth;
@@ -81,6 +83,7 @@ async function setupDiscordSdk() {
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setupApp().then(() => {
@@ -95,31 +98,28 @@ function App() {
     if (gameId === 'fm') {
       navigate('/create-motorsport');
     } else if (gameId === 'fh5') {
-      // Пока что перенаправляем на FM, так как FH5 не реализован
-      navigate('/create-motorsport');
+      navigate('/create-horizon');
     }
   };
 
   return (
-    <Router>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="App container mx-auto p-4"
-      >
-        <ToastContainer />
-        <Routes>
-          <Route path="/" element={<MainMenu />} />
-          <Route path="/create-race" element={<GameSelector onSelect={handleGameSelect} />} />
-          <Route path="/create-motorsport" element={<MotorsportCreateForm userId={user?.id} />} />
-          <Route path="/event-list" element={<EventList />} />
-          <Route path="/event/:id" element={<EventDetails user={user} />} />
-          <Route path="/profile" element={<ProfilePage user={user} />} />
-        </Routes>
-      </motion.div>
-    </Router>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="App container mx-auto p-4"
+    >
+      <ToastContainer />
+      <Routes>
+        <Route path="/" element={<MainMenu />} />
+        <Route path="/create-race" element={<GameSelector onSelect={handleGameSelect} />} />
+        <Route path="/create-motorsport" element={<MotorsportCreateForm userId={user?.id} />} />
+        <Route path="/create-horizon" element={<HorizonCreateForm userId={user?.id} />} />
+        <Route path="/event-list" element={<EventList />} />
+        <Route path="/event/:id" element={<EventDetails user={user} />} />
+        <Route path="/profile" element={<ProfilePage user={user} />} />
+      </Routes>
+    </motion.div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+export default App;
