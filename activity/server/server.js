@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, push, get, remove, set, query, orderByKey, limitToFirst, startAfter } from "firebase/database";
+import { getDatabase, ref, push, get, remove, set, query, orderByKey, limitToFirst, startAfter, update } from "firebase/database";
 import { body, validationResult } from 'express-validator';
 import fetch from 'node-fetch';
 import helmet from 'helmet';
@@ -224,19 +224,36 @@ app.delete("/api/races/:id", async (req, res, next) => {
   }
 });
 
-// Эндпоинт для обновления гонки
+// Обновляем эндпоинт для редактирования гонки
 app.put("/api/races/:id", validateRace, async (req, res, next) => {
+  console.log('Received race update request:', req.body);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.log('Validation errors:', errors.array());
     return res.status(400).json({ errors: errors.array() });
   }
 
   try {
-    const raceRef = ref(db, `races/${req.params.id}`);
-    await set(raceRef, req.body);
-    res.json({ id: req.params.id, ...req.body });
+    const raceId = req.params.id;
+    const raceData = {
+      ...req.body,
+      dateTime: new Date(req.body.dateTime).toISOString()
+    };
+    
+    console.log('Processed race data:', raceData);
+    const raceRef = ref(db, `races/${raceId}`);
+    
+    // Используем update вместо set для частичного обновления
+    // или set с опцией merge: true
+    await update(raceRef, raceData);
+    // Альтернативный вариант:
+    // await set(raceRef, raceData, { merge: true });
+    
+    console.log('Race updated successfully:', raceId);
+    res.status(200).json({ id: raceId, ...raceData });
   } catch (error) {
-    next(error);
+    console.error('Error updating race:', error);
+    res.status(500).json({ error: 'Failed to update race', details: error.message });
   }
 });
 

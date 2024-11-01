@@ -7,6 +7,7 @@ import MotorsportCreateForm from './components/MotorsportCreateForm';
 import EventList from './components/EventList';
 import EventDetails from './components/EventDetails';
 import ProfilePage from './components/ProfilePage';
+import MotorsportEditForm from './components/MotorsportEditForm';
 import "./style.css";
 import { motion } from 'framer-motion';
 import { ToastContainer } from 'react-toastify';
@@ -105,6 +106,7 @@ function App() {
           <Route path="/event-list" element={<EventList />} />
           <Route path="/event/:id" element={<EventDetails user={user} />} />
           <Route path="/profile" element={<ProfilePage user={user} />} />
+          <Route path="/edit-event/:id" element={<MotorsportEditForm userId={user?.id} />} />
         </Routes>
       </motion.div>
     </Router>

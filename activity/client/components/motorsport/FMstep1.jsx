@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { trackList } from './data/trackList';
 
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  
+  const tzOffset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - (tzOffset * 60000));
+  return localDate.toISOString().slice(0, 16);
+};
+
 const FMstep1 = ({ formData, onChange, attemptedSubmit }) => {
   const [trackSuggestions, setTrackSuggestions] = useState([]);
 
@@ -80,12 +90,14 @@ const FMstep1 = ({ formData, onChange, attemptedSubmit }) => {
 
       <div className="flex space-x-4">
         <div className="flex-1">
-          <label htmlFor="dateTime" className="block text-sm font-medium text-gray-300 mb-2">Date and Time</label>
+          <label htmlFor="dateTime" className="block text-sm font-medium text-gray-300 mb-2">
+            Date and Time
+          </label>
           <input
             type="datetime-local"
             id="dateTime"
             name="dateTime"
-            value={formData.dateTime}
+            value={formatDateForInput(formData.dateTime)}
             onChange={(e) => onChange('dateTime', e.target.value)}
             className={`w-full p-2 rounded bg-gray-700 text-white border ${
               attemptedSubmit && !formData.dateTime ? 'border-red-500' : 'border-gray-600'

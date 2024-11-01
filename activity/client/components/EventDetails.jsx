@@ -274,12 +274,12 @@ const EventDetails = ({ user }) => {
 
             <div className="flex justify-between mt-6">
               {user && user.id === event.createdBy && (
-                <>
+                <div className="flex gap-4">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => navigate(`/edit-event/${event.id}`)}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg flex items-center"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg flex items-center hover:bg-blue-600 transition-colors"
                   >
                     <IoPencilOutline className="mr-2" /> Edit Event
                   </motion.button>
@@ -287,11 +287,11 @@ const EventDetails = ({ user }) => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleDelete}
-                    className="px-4 py-2 bg-red-500 text-white rounded-lg flex items-center"
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg flex items-center hover:bg-red-600 transition-colors"
                   >
                     <IoTrashOutline className="mr-2" /> Delete Event
                   </motion.button>
-                </>
+                </div>
               )}
             </div>
           </>

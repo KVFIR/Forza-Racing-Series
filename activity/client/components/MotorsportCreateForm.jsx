@@ -120,10 +120,11 @@ const MotorsportCreateForm = ({ userId }) => {
     }
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = (e) => {
+    e.preventDefault();
+    
     if (validateStep()) {
       if (step === 1) {
-        // Инициализация classDetails при переходе к шагу 2
         const newClassDetails = formData.carClasses
           .filter(className => className !== '')
           .map(className => ({
@@ -302,7 +303,7 @@ const MotorsportCreateForm = ({ userId }) => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 type="button"
-                onClick={handleNextStep}
+                onClick={(e) => handleNextStep(e)}
                 className="bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
               >
                 Next Step
