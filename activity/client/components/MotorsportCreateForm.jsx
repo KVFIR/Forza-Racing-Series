@@ -148,14 +148,23 @@ const MotorsportCreateForm = ({ userId }) => {
       return;
     }
 
-    const submitData = {
-      ...formData,
+    // Создаем основной объект гонки
+    const raceData = {
+      name: formData.name,
       dateTime: new Date(formData.dateTime).toISOString(),
+      slots: formData.slots,
+      track: formData.track,
+      trackConfig: formData.trackConfig,
       carClasses: formData.carClasses.filter(cls => cls !== ''),
+      createdBy: formData.createdBy,
+      practiceAndQualifying: formData.practiceAndQualifying,
+      race: formData.race,
+      settings: formData.settings,
       classDetails: formData.classDetails.map(detail => ({
         ...detail,
         availableCars: detail.availableCars.filter(car => car !== '')
-      }))
+      })),
+      game: 'fm' // Добавляем идентификатор игры в основной объект
     };
 
     try {
@@ -164,7 +173,7 @@ const MotorsportCreateForm = ({ userId }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(submitData)
+        body: JSON.stringify(raceData)
       });
 
       if (!response.ok) {

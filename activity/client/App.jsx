@@ -15,6 +15,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Route, Routes } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
 const isProd = import.meta.env.PROD;
 let auth;
@@ -82,17 +83,35 @@ async function setupDiscordSdk() {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    setupApp().then(() => {
-      setIsAuthenticated(true);
-      if (auth && auth.user) {
-        setUser(auth.user);
+    const initApp = async () => {
+      try {
+        await setupApp();
+        setIsAuthenticated(true);
+        if (auth && auth.user) {
+          setUser(auth.user);
+        }
+      } catch (error) {
+        console.error('Failed to initialize app:', error);
+      } finally {
+        setIsLoading(false);
       }
-    });
+    };
+
+    initApp();
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   const handleGameSelect = (gameId) => {
     if (gameId === 'fm') {
