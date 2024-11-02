@@ -10,6 +10,10 @@ const OrganizationSettings = ({ user, auth }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [serverInfo, setServerInfo] = useState(null);
   const [hasAdminPermission, setHasAdminPermission] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
+  const [channels, setChannels] = useState([]);
+  const [filteredRoles, setFilteredRoles] = useState([]);
 
   useEffect(() => {
     const checkPermissions = async () => {
@@ -47,7 +51,11 @@ const OrganizationSettings = ({ user, auth }) => {
           return;
         }
 
-        await fetchServerInfo();
+        await Promise.all([
+          fetchServerInfo(),
+          fetchChannels(),
+          fetchSettings()
+        ]);
       } catch (error) {
         console.error('Error checking permissions:', error);
         toast.error('Failed to verify permissions');
@@ -57,6 +65,16 @@ const OrganizationSettings = ({ user, auth }) => {
 
     checkPermissions();
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (serverInfo?.roles) {
+      const roles = serverInfo.roles.filter(role => 
+        // Исклю��аем роль @everyone (она всегда имеет такой же ID как и guild)
+        role.id !== serverInfo.id
+      );
+      setFilteredRoles(roles);
+    }
+  }, [serverInfo]);
 
   const fetchServerInfo = async () => {
     try {
@@ -91,9 +109,97 @@ const OrganizationSettings = ({ user, auth }) => {
     }
   };
 
+  const fetchChannels = async () => {
+    try {
+      const response = await fetch(`/.proxy/api/guilds/${user.guildId}/channels`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch channels');
+      }
+
+      const channelData = await response.json();
+      // Фильтруем только текстовые каналы
+      const textChannels = channelData.filter(channel => channel.type === 0);
+      setChannels(textChannels);
+    } catch (error) {
+      console.error('Error fetching channels:', error);
+      toast.error('Failed to load channels');
+    }
+  };
+
   const getServerIconUrl = (serverId, icon) => {
     if (!icon) return null;
     return `https://cdn.discordapp.com/icons/${serverId}/${icon}.webp?size=128`;
+  };
+
+  const saveSettings = async () => {
+    // Валидация
+    if (!selectedChannel) {
+      toast.error('Please select an announcement channel');
+      return;
+    }
+    if (!selectedRole) {
+      toast.error('Please select a participant role');
+      return;
+    }
+
+    // Показываем состояние загрузки
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`/.proxy/api/guilds/${user.guildId}/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          announcementChannelId: selectedChannel,
+          participantRoleId: selectedRole
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save settings');
+      }
+
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error(error.message || 'Failed to save settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch(`/.proxy/api/guilds/${user.guildId}/settings`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch settings');
+      }
+
+      const settings = await response.json();
+      if (settings.announcementChannelId) {
+        setSelectedChannel(settings.announcementChannelId);
+      }
+      if (settings.participantRoleId) {
+        setSelectedRole(settings.participantRoleId);
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      toast.error('Failed to load settings');
+    }
   };
 
   if (isLoading) {
@@ -197,6 +303,67 @@ const OrganizationSettings = ({ user, auth }) => {
               <p className="text-blue-100">
                 This page shows basic information about your Discord server. More settings and customization options will be available in future updates.
               </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="bg-gray-700 bg-opacity-70 rounded-lg p-6"
+            >
+              <h3 className="text-xl font-semibold mb-6 flex items-center text-white">
+                <IoSettingsOutline className="mr-2 text-yellow-400" />
+                Event Settings
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <label className="block">
+                    <span className="text-white mb-2 block">Announcements Channel</span>
+                    <select
+                      value={selectedChannel}
+                      onChange={(e) => setSelectedChannel(e.target.value)}
+                      className="w-full bg-gray-800 text-white rounded-lg p-2 border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                    >
+                      <option value="">Select channel</option>
+                      {channels.map(channel => (
+                        <option key={channel.id} value={channel.id}>
+                          # {channel.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="block">
+                    <span className="text-white mb-2 block">Participant Role</span>
+                    <select
+                      value={selectedRole}
+                      onChange={(e) => setSelectedRole(e.target.value)}
+                      className="w-full bg-gray-800 text-white rounded-lg p-2 border border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                    >
+                      <option value="">Select role</option>
+                      {filteredRoles.map(role => (
+                        <option key={role.id} value={role.id}>
+                          {role.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={saveSettings}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                >
+                  Save Settings
+                </motion.button>
+              </div>
             </motion.div>
           </div>
         )}

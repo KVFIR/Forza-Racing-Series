@@ -273,7 +273,7 @@ app.get("/api/races/:id", async (req, res, next) => {
   }
 });
 
-// Эндпоинт для получения информации о пользователе
+// Эндпоинт для получения инфомации о пользователе
 app.get("/api/users/:id", async (req, res, next) => {
   try {
     const userRef = ref(db, `users/${req.params.id}`);
@@ -457,7 +457,7 @@ app.get("/api/guilds/:guildId/member-permissions", async (req, res) => {
       }
     }
 
-    // Добавляем отладочную информацию
+    // Добавляем отладочную инормацию
     console.log('Permissions check:', {
       originalPermissions: memberData.permissions,
       convertedPermissions: permissions.toString(),
@@ -476,6 +476,111 @@ app.get("/api/guilds/:guildId/member-permissions", async (req, res) => {
       error: error.message,
       permissions: '0',
       roles: []
+    });
+  }
+});
+
+app.get("/api/guilds/:guildId/channels", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${req.params.guildId}/channels`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch channels');
+    }
+
+    const channels = await response.json();
+    res.json(channels);
+  } catch (error) {
+    console.error('Error fetching channels:', error);
+    res.status(500).json([]);
+  }
+});
+
+app.post("/api/guilds/:guildId/settings", async (req, res) => {
+  try {
+    const { announcementChannelId, participantRoleId } = req.body;
+    const guildId = req.params.guildId;
+
+    // Проверяем существование канала и роли через Discord API
+    const [channelResponse, roleResponse] = await Promise.all([
+      fetch(
+        `https://discord.com/api/v10/channels/${announcementChannelId}`,
+        {
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      ),
+      fetch(
+        `https://discord.com/api/v10/guilds/${guildId}/roles/${participantRoleId}`,
+        {
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+    ]);
+
+    if (!channelResponse.ok || !roleResponse.ok) {
+      throw new Error('Invalid channel or role ID');
+    }
+
+    // Сохраняем в Realtime Database
+    const settingsRef = ref(db, `guild_settings/${guildId}`);
+    await set(settingsRef, {
+      announcementChannelId,
+      participantRoleId,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      settings: {
+        announcementChannelId,
+        participantRoleId
+      }
+    });
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get("/api/guilds/:guildId/settings", async (req, res) => {
+  try {
+    const guildId = req.params.guildId;
+    const settingsRef = ref(db, `guild_settings/${guildId}`);
+    const snapshot = await get(settingsRef);
+    
+    if (!snapshot.exists()) {
+      return res.json({
+        announcementChannelId: '',
+        participantRoleId: ''
+      });
+    }
+
+    const data = snapshot.val();
+    res.json({
+      announcementChannelId: data.announcementChannelId || '',
+      participantRoleId: data.participantRoleId || ''
+    });
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({
+      error: error.message
     });
   }
 });
