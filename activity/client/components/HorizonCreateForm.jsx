@@ -117,10 +117,20 @@ const HorizonCreateForm = ({ userId }) => {
         throw new Error('Invalid date format');
       }
       
-      const raceData = {
-        ...formData,
-        dateTime: localDate.toISOString(),
-        game: 'fh5' // Добавляем идентификатор игры в основной объект
+      // Создаем объект с массивом FH
+      const submitData = {
+        FH5: [{
+          name: formData.name,
+          dateTime: localDate.toISOString(),
+          slots: formData.slots,
+          location: formData.location,
+          route: formData.route,
+          carClass: formData.carClass,
+          createdBy: formData.createdBy,
+          race: formData.race,
+          settings: formData.settings
+        }],
+        game: 'fh5'
       };
 
       const response = await fetch('/.proxy/api/races', {
@@ -128,7 +138,7 @@ const HorizonCreateForm = ({ userId }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(raceData)
+        body: JSON.stringify(submitData)
       });
 
       if (!response.ok) {

@@ -16,6 +16,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Route, Routes } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import OrganizationSettings from './components/OrganizationSettings';
 
 const isProd = import.meta.env.PROD;
 let auth;
@@ -36,48 +37,46 @@ async function setupApp() {
 }
 
 async function setupDiscordSdk() {
-  await discordSdk.ready();
-  console.log("Discord SDK is ready");
-
-  const { code } = await discordSdk.commands.authorize({
-    client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
-    response_type: "code",
-    state: "",
-    prompt: "none",
-    scope: [
-      "identify",
-      "guilds",
-      "applications.commands"
-    ],
-  });
-
   try {
-    const response = await fetch("/.proxy/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        code,
-      }),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const { access_token } = await response.json();
-    
-    auth = await discordSdk.commands.authenticate({
-      access_token,
-    });
+    await discordSdk.ready();
+    console.log("Discord SDK is ready");
 
-    if (auth == null) {
-      throw new Error("Authenticate command failed");
+    // Проверяем, есть ли уже аутентификация
+    if (!auth) {
+      const { code } = await discordSdk.commands.authorize({
+        client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
+        response_type: "code",
+        state: "",
+        prompt: "none",
+        scope: [
+          "identify",
+          "guilds",
+          "guilds.members.read",  // Добавляем нужный scope
+          "applications.commands"
+        ],
+      });
+
+      const response = await fetch("/.proxy/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const { access_token } = await response.json();
+      auth = await discordSdk.commands.authenticate({ access_token });
     }
 
     console.log("Discord SDK is authenticated");
+    return auth;
   } catch (error) {
     console.error("Error during authentication:", error);
-    // Здесь можно добавить код для отображения ошибки пользователю
+    return null;
   }
 }
 
@@ -93,7 +92,10 @@ function App() {
         await setupApp();
         setIsAuthenticated(true);
         if (auth && auth.user) {
-          setUser(auth.user);
+          setUser({
+            ...auth.user,
+            guildId: discordSdk.guildId
+          });
         }
       } catch (error) {
         console.error('Failed to initialize app:', error);
@@ -103,7 +105,7 @@ function App() {
     };
 
     initApp();
-  }, []);
+  }, [navigate]);
 
   if (isLoading) {
     return (
@@ -130,13 +132,14 @@ function App() {
     >
       <ToastContainer />
       <Routes>
-        <Route path="/" element={<MainMenu />} />
+        <Route path="/" element={<MainMenu user={{ ...auth?.user, isAdmin: user?.isAdmin }} />} />
         <Route path="/create-race" element={<GameSelector onSelect={handleGameSelect} />} />
         <Route path="/create-motorsport" element={<MotorsportCreateForm userId={user?.id} />} />
         <Route path="/create-horizon" element={<HorizonCreateForm userId={user?.id} />} />
         <Route path="/event-list" element={<EventList />} />
         <Route path="/event/:id" element={<EventDetails user={user} />} />
         <Route path="/profile" element={<ProfilePage user={user} />} />
+        <Route path="/organization-settings" element={<OrganizationSettings user={user} auth={auth} />} />
       </Routes>
     </motion.div>
   );

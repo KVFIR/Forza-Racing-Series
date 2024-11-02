@@ -338,6 +338,148 @@ app.get("/api/user/:userId", async (req, res) => {
   }
 });
 
+app.get("/api/guilds/:guildId/members/:userId", async (req, res) => {
+  try {
+    const { guildId, userId } = req.params;
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`Discord API error: ${response.status}`);
+      // Возвращаем базовые права вместо 404
+      return res.json({
+        permissions: '0',
+        user: { id: userId },
+        guild: { id: guildId }
+      });
+    }
+
+    const memberData = await response.json();
+    res.json(memberData);
+  } catch (error) {
+    console.error('Error fetching guild member:', error);
+    // Возвращаем базовые права вместо ошибки
+    res.json({
+      permissions: '0',
+      user: { id: req.params.userId },
+      guild: { id: req.params.guildId }
+    });
+  }
+});
+
+app.get("/api/guilds/:guildId", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${req.params.guildId}?with_counts=true`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`Discord API error: ${response.status}`);
+      throw new Error('Failed to fetch guild info');
+    }
+
+    const guildData = await response.json();
+    console.log('Guild data:', guildData); // Для отладки
+
+    res.json(guildData);
+  } catch (error) {
+    console.error('Error fetching guild:', error);
+    res.status(500).json({
+      id: req.params.guildId,
+      name: 'Unknown Server',
+      icon: null,
+      roles: []
+    });
+  }
+});
+
+app.get("/api/guilds/:guildId/member-permissions", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${req.params.guildId}/members/${req.query.userId}`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`Discord API error: ${response.status}`);
+      throw new Error('Failed to fetch member permissions');
+    }
+
+    const memberData = await response.json();
+    
+    // Получаем роли пользователя и их разрешения
+    const roles = memberData.roles || [];
+    
+    // Проверяем наличие прав администратора (0x8)
+    const ADMINISTRATOR_PERMISSION = BigInt(0x8);
+    let permissions;
+    
+    try {
+      permissions = BigInt(memberData.permissions || '0');
+    } catch (error) {
+      console.error('Error converting permissions to BigInt:', error);
+      permissions = BigInt(0);
+    }
+
+    // Проверяем, является ли пользователь владельцем сервера
+    const guildResponse = await fetch(
+      `https://discord.com/api/v10/guilds/${req.params.guildId}`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (guildResponse.ok) {
+      const guildData = await guildResponse.json();
+      if (guildData.owner_id === req.query.userId) {
+        permissions = permissions | ADMINISTRATOR_PERMISSION;
+      }
+    }
+
+    // Добавляем отладочную информацию
+    console.log('Permissions check:', {
+      originalPermissions: memberData.permissions,
+      convertedPermissions: permissions.toString(),
+      roles,
+      userId: req.query.userId,
+      isAdmin: (permissions & ADMINISTRATOR_PERMISSION) === ADMINISTRATOR_PERMISSION
+    });
+
+    res.json({
+      permissions: permissions.toString(),
+      roles
+    });
+  } catch (error) {
+    console.error('Error fetching member permissions:', error);
+    res.status(500).json({
+      error: error.message,
+      permissions: '0',
+      roles: []
+    });
+  }
+});
+
 app.use(errorHandler);
 
 server.listen(port, () => {

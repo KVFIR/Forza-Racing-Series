@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { IoAdd, IoList, IoPersonOutline } from 'react-icons/io5';
+import { IoAdd, IoList, IoPersonOutline, IoSettingsOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 
-const MainMenu = () => {
+const MainMenu = ({ user }) => {
   const navigate = useNavigate();
 
   return (
@@ -39,6 +39,14 @@ const MainMenu = () => {
           className="w-full bg-gray-500 bg-opacity-60 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400 flex items-center justify-center"
         >
           <IoPersonOutline className="mr-2 text-2xl" /> My Profile
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/organization-settings')}
+          className="w-full bg-gray-500 bg-opacity-60 text-white py-3 px-6 rounded-lg text-lg font-semibold transition duration-300 ease-in-out hover:bg-gray-600 hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 border border-gray-400 flex items-center justify-center"
+        >
+          <IoSettingsOutline className="mr-2 text-2xl" /> Organization Settings
         </motion.button>
       </div>
     </motion.div>

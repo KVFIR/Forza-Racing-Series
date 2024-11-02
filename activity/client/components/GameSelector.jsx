@@ -21,10 +21,8 @@ const GameSelector = ({ onSelect }) => {
   ];
 
   const handleSelect = (gameId) => {
-    if (gameId === 'fm') {
+    if (gameId === 'fm' || gameId === 'fh5') {
       navigate('/create-motorsport');
-    } else if (gameId === 'fh5') {
-      navigate('/create-horizon');
     }
     onSelect(gameId);
   };
