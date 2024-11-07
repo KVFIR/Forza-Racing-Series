@@ -8,13 +8,11 @@ import FMstep2 from './motorsport/FMstep2';
 import FMstep3 from './motorsport/FMstep3';
 import FMstep4 from './motorsport/FMstep4';
 
-const MotorsportCreateForm = ({ userId }) => {
+const MotorsportCreateForm = ({ user }) => {
   const navigate = useNavigate();
-  const [isInitialized, setIsInitialized] = useState(false);
   const [step, setStep] = useState(1);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
-  // Базовая структура данных формы
   const [formData, setFormData] = useState({
     name: '',
     dateTime: '',
@@ -22,7 +20,7 @@ const MotorsportCreateForm = ({ userId }) => {
     track: '',
     trackConfig: '',
     carClasses: [''],
-    createdBy: userId,
+    createdBy: user?.id || null,
     practiceAndQualifying: {
       enabled: false,
       practiceTimeLimit: 20,
@@ -48,28 +46,15 @@ const MotorsportCreateForm = ({ userId }) => {
     classDetails: []
   });
 
-  // Проверка аутентификации
+  // Обновляем createdBy при изменении user
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialized(true);
-      if (!userId && isInitialized) {
-        toast.error('User authentication required');
-        navigate('/');
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [userId, navigate, isInitialized]);
-
-  // Обновление createdBy при изменении userId
-  useEffect(() => {
-    if (userId) {
+    if (user?.id) {
       setFormData(prev => ({
         ...prev,
-        createdBy: userId
+        createdBy: user.id
       }));
     }
-  }, [userId]);
+  }, [user]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({

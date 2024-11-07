@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { IoChevronBackOutline, IoChevronForwardOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoPeopleOutline, IoArrowBackOutline } from 'react-icons/io5';
+import { IoChevronBackOutline, IoChevronForwardOutline, IoCarSportOutline, IoCalendarOutline, IoLocationOutline, IoPeopleOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from './common/LoadingSpinner';
 import { useMediaQuery } from 'react-responsive';
+import BackButton from './common/BackButton';
 
 const EventList = () => {
   const navigate = useNavigate();
@@ -42,43 +43,15 @@ const EventList = () => {
     fetchRaces();
   }, [isDesktop]);
 
-  const handleDelete = async (id) => {
-    try {
-      const response = await fetch(`/.proxy/api/races/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete race');
-      }
-      setRaces(races.filter(race => race.id !== id));
-      toast.success('Race deleted successfully');
-    } catch (error) {
-      console.error('Error deleting race:', error);
-      toast.error('Failed to delete race. Please try again.');
-    }
-  };
-
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       fetchRaces(newPage);
     }
   };
 
-  const handleBackToMenu = () => {
-    navigate('/');
-  };
-
   return (
     <div>
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleBackToMenu}
-        className="mb-4 flex items-center bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-      >
-        <IoArrowBackOutline className="mr-2" />
-        Back to Menu
-      </motion.button>
+      <BackButton to="/" children="Back to Menu" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { IoArrowBackOutline } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import FH5step1 from './horizon/FH5step1';
 import FH5step2 from './horizon/FH5step2';
 import FH5step3 from './horizon/FH5step3';
+import BackButton from './common/BackButton';
 
-const HorizonCreateForm = ({ userId }) => {
+const HorizonCreateForm = ({ user }) => {
   const navigate = useNavigate();
-  const [isInitialized, setIsInitialized] = useState(false);
   const [step, setStep] = useState(1);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
-  // Базовая структура данных формы для Horizon
   const [formData, setFormData] = useState({
     name: '',
     dateTime: '',
@@ -21,7 +19,7 @@ const HorizonCreateForm = ({ userId }) => {
     location: '',
     route: '',
     carClass: '',
-    createdBy: userId,
+    createdBy: user?.id || null,
     race: {
       raceType: 'circuit',
       numberOfLaps: 3,
@@ -41,18 +39,14 @@ const HorizonCreateForm = ({ userId }) => {
     }
   });
 
-  // Проверка аутентификации
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialized(true);
-      if (!userId && isInitialized) {
-        toast.error('User authentication required');
-        navigate('/');
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [userId, navigate, isInitialized]);
+    if (user?.id) {
+      setFormData(prev => ({
+        ...prev,
+        createdBy: user.id
+      }));
+    }
+  }, [user]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({
@@ -105,6 +99,13 @@ const HorizonCreateForm = ({ userId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast.error('User authentication required');
+      navigate('/');
+      return;
+    }
+    
     setAttemptedSubmit(true);
 
     if (!validateStep()) {
@@ -157,15 +158,7 @@ const HorizonCreateForm = ({ userId }) => {
 
   return (
     <div>
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => navigate('/create-race')}
-        className="mb-4 flex items-center bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-      >
-        <IoArrowBackOutline className="mr-2" />
-        Back to Game Selection
-      </motion.button>
+      <BackButton to="/create-race" children="Back to Game Selection" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

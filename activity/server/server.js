@@ -10,6 +10,9 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import { config } from './config.js';
 import discordService from './services/discordService.js';
+import fileUpload from 'express-fileupload';
+import path from 'path';
+import fs from 'fs';
 
 dotenv.config({ path: "../.env" });
 
@@ -83,6 +86,15 @@ app.use(helmet({
   crossOriginResourcePolicy: false,
 }));
 
+// Добавляем middleware для загрузки файлов
+app.use(fileUpload({
+  limits: { fileSize: 1024 * 1024 }, // 1MB
+  abortOnLimit: true
+}));
+
+// Делаем папку uploads доступной статически
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
@@ -91,7 +103,7 @@ wss.on('connection', (ws) => {
 
   ws.on('message', (message) => {
     console.log('Received message:', message);
-    // Здесь вы можете обрабатывать входящие сообщения
+    // Здесь вы можете обрабатывать входящие сообщеня
   });
 
   ws.on('close', () => {
@@ -224,7 +236,7 @@ app.delete("/api/races/:id", async (req, res, next) => {
   }
 });
 
-// Обновляем эндпоинт для редактирования гонки
+// Обновляем эндпоинт для редактрования гонки
 app.put("/api/races/:id", validateRace, async (req, res, next) => {
   console.log('Received race update request:', req.body);
   const errors = validationResult(req);
@@ -244,7 +256,7 @@ app.put("/api/races/:id", validateRace, async (req, res, next) => {
     const raceRef = ref(db, `races/${raceId}`);
     
     // Используем update вместо set для частичного обновления
-    // или set с опцией merge: true
+    // ии set с опцией merge: true
     await update(raceRef, raceData);
     // Альтернативный вариант:
     // await set(raceRef, raceData, { merge: true });
@@ -457,7 +469,7 @@ app.get("/api/guilds/:guildId/member-permissions", async (req, res) => {
       }
     }
 
-    // Добавляем отладочную инормацию
+    // Добавляем отлаочную инормацию
     console.log('Permissions check:', {
       originalPermissions: memberData.permissions,
       convertedPermissions: permissions.toString(),
@@ -535,9 +547,16 @@ app.post("/api/guilds/:guildId/settings", async (req, res) => {
       throw new Error('Invalid channel or role ID');
     }
 
-    // Сохраняем в Realtime Database
-    const settingsRef = ref(db, `guild_settings/${guildId}`);
-    await set(settingsRef, {
+    // Сохраняе в структуру organizations вместо guild_settings
+    const orgRef = ref(db, `organizations/${guildId}`);
+    const snapshot = await get(orgRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('Organization not registered');
+    }
+
+    // Обновляем существующую организацию, сохраняя остальные поля
+    await update(orgRef, {
       announcementChannelId,
       participantRoleId,
       updatedAt: new Date().toISOString()
@@ -559,29 +578,212 @@ app.post("/api/guilds/:guildId/settings", async (req, res) => {
   }
 });
 
+// Обновляем GET endpoint для получения настроек
 app.get("/api/guilds/:guildId/settings", async (req, res) => {
   try {
-    const guildId = req.params.guildId;
-    const settingsRef = ref(db, `guild_settings/${guildId}`);
-    const snapshot = await get(settingsRef);
+    const orgRef = ref(db, `organizations/${req.params.guildId}`);
+    const snapshot = await get(orgRef);
     
     if (!snapshot.exists()) {
       return res.json({
-        announcementChannelId: '',
-        participantRoleId: ''
+        announcementChannelId: null,
+        participantRoleId: null
       });
     }
 
-    const data = snapshot.val();
+    const orgData = snapshot.val();
     res.json({
-      announcementChannelId: data.announcementChannelId || '',
-      participantRoleId: data.participantRoleId || ''
+      announcementChannelId: orgData.announcementChannelId || null,
+      participantRoleId: orgData.participantRoleId || null
     });
   } catch (error) {
     console.error('Error fetching settings:', error);
     res.status(500).json({
+      success: false,
       error: error.message
     });
+  }
+});
+
+// Добавить новые эндпоинты для работы с организациями
+app.get("/api/organizations/:guildId", async (req, res) => {
+  try {
+    const orgRef = ref(db, `organizations/${req.params.guildId}`);
+    const snapshot = await get(orgRef);
+    
+    if (snapshot.exists()) {
+      res.json({ id: snapshot.key, ...snapshot.val() });
+    } else {
+      res.status(404).json({ error: 'Organization not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching organization:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post("/api/organizations/register", async (req, res) => {
+  try {
+    const { guildId, name, icon, announcementChannelId, participantRoleId } = req.body;
+    const orgRef = ref(db, `organizations/${guildId}`);
+    
+    await set(orgRef, {
+      name,
+      icon,
+      announcementChannelId,
+      participantRoleId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error registering organization:', error);
+    res.status(500).json({ error: 'Failed to register organization' });
+  }
+});
+
+// Добавляем PATCH эндпоинт для обновления организации
+app.patch("/api/organizations/:guildId", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { name, logo, settings } = req.body;
+
+    // Проверяем существование организации
+    const orgRef = ref(db, `organizations/${guildId}`);
+    const snapshot = await get(orgRef);
+    
+    if (!snapshot.exists()) {
+      return res.status(404).json({ 
+        error: 'Organization not found' 
+      });
+    }
+
+    // Обновляем данне
+    const updates = {
+      name: name || snapshot.val().name,
+      icon: logo || snapshot.val().icon,
+      announcementChannelId: settings?.channelId || snapshot.val().announcementChannelId,
+      participantRoleId: settings?.roleId || snapshot.val().participantRoleId,
+      updatedAt: new Date().toISOString()
+    };
+
+    await update(orgRef, updates);
+
+    res.json({
+      success: true,
+      ...updates
+    });
+  } catch (error) {
+    console.error('Error updating organization:', error);
+    res.status(500).json({ 
+      error: 'Failed to update organization' 
+    });
+  }
+});
+
+// Добавить новые прокси-эндпоинты для Discord API
+app.get("/api/discord/users/@me/guilds", async (req, res) => {
+  try {
+    const response = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+      headers: {
+        'Authorization': `Bearer ${req.headers.authorization.split(' ')[1]}`,
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch guilds');
+    }
+    
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Error proxying Discord guilds request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get("/api/discord/guilds/:guildId/channels", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${req.params.guildId}/channels`,
+      {
+        headers: {
+          'Authorization': `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch channels');
+    }
+    
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Error proxying Discord channels request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get("/api/discord/guilds/:guildId/roles", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${req.params.guildId}/roles`,
+      {
+        headers: {
+          'Authorization': `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch roles');
+    }
+    
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Error proxying Discord roles request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post("/api/guilds/:guildId/invite", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    
+    // Создаем приглашение через Discord API
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/invites`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          max_age: 86400, // 24 часа
+          max_uses: 0, // Без ограничений
+          temporary: false
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to create invite');
+    }
+
+    const invite = await response.json();
+    res.json({
+      inviteUrl: `https://discord.gg/${invite.code}`
+    });
+  } catch (error) {
+    console.error('Error creating invite:', error);
+    res.status(500).json({ error: 'Failed to create invite' });
   }
 });
 

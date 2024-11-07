@@ -10,7 +10,7 @@ import FMstep4 from './motorsport/FMstep4';
 import LoadingSpinner from './common/LoadingSpinner';
 import { trackList } from './motorsport/data/trackList';
 
-const MotorsportEditForm = ({ userId }) => {
+const MotorsportEditForm = ({ user }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +25,7 @@ const MotorsportEditForm = ({ userId }) => {
     track: '',
     trackConfig: '',
     carClasses: [''],
-    createdBy: userId,
+    createdBy: user.id,
     practiceAndQualifying: {
       enabled: false,
       practiceTimeLimit: '20',  // Строковое значение для select
@@ -107,11 +107,11 @@ const MotorsportEditForm = ({ userId }) => {
 
   // Проверка прав доступа
   useEffect(() => {
-    if (!isLoading && formData && userId && formData.createdBy !== userId) {
+    if (!isLoading && formData && user?.id && formData.createdBy !== user.id) {
       toast.error('You do not have permission to edit this event');
       navigate(`/event/${id}`);
     }
-  }, [formData, userId, id, navigate, isLoading]);
+  }, [formData, user, id, navigate, isLoading]);
 
   // Остальные функции такие же, как в MotorsportCreateForm
   const handleChange = (field, value) => {

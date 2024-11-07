@@ -45,3 +45,13 @@ body {
     padding-bottom: max(var(--saib), 2rem);
   }
 }
+
+select option {
+  padding: 12px;
+  background-color: #1f2937; /* bg-gray-800 */
+}
+
+select:focus option:checked {
+  background-color: #2563eb; /* bg-blue-600 */
+  color: white;
+}

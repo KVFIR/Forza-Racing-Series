@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import {
-  IoTrashOutline,
-  IoArrowBackOutline, 
+  IoTrashOutline, 
   IoPencilOutline,
   IoCalendarOutline,
   IoLocationOutline,
@@ -17,6 +16,7 @@ import {
   IoFlagOutline
 } from 'react-icons/io5';
 import LoadingSpinner from './common/LoadingSpinner';
+import BackButton from './common/BackButton';
 
 const EventDetails = ({ user }) => {
   const { id } = useParams();
@@ -194,15 +194,7 @@ const EventDetails = ({ user }) => {
 
   return (
     <div className="container mx-auto px-4">
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => navigate('/event-list')}
-        className="mb-4 flex items-center bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg font-semibold transition duration-300 ease-in-out hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-      >
-        <IoArrowBackOutline className="mr-2" />
-        Back to List
-      </motion.button>
+      <BackButton to="/event-list" children="Back to Events" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

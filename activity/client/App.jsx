@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom/client';
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import { DiscordProxy } from '@robojs/patch';
 import MainMenu from './components/MainMenu';
@@ -9,14 +8,16 @@ import EventList from './components/EventList';
 import EventDetails from './components/EventDetails';
 import ProfilePage from './components/ProfilePage';
 import GameSelector from './components/GameSelector';
-import "./style.css";
+import "./src/style.css";
 import { motion } from 'framer-motion';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import OrganizationSettings from './components/OrganizationSettings';
+import OrganizationRegister from './components/OrganizationRegister';
+import MotorsportEditForm from './components/MotorsportEditForm';
 
 const isProd = import.meta.env.PROD;
 let auth;
@@ -51,7 +52,7 @@ async function setupDiscordSdk() {
         scope: [
           "identify",
           "guilds",
-          "guilds.members.read",  // Добавляем нужный scope
+          "guilds.members.read",
           "applications.commands"
         ],
       });
@@ -79,6 +80,30 @@ async function setupDiscordSdk() {
     return null;
   }
 }
+
+const handleApiError = (error) => {
+  console.error('API Error:', error);
+  if (error.status === 401) {
+    // Если токен истек, обновляем аутентификацию
+    setIsAuthenticated(false);
+    setupDiscordSdk().then(() => {
+      setIsAuthenticated(true);
+    });
+  }
+};
+
+const ProtectedRoute = ({ children, user }) => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (!user) {
+      toast.error('User authentication required');
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  return user ? children : null;
+};
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -132,14 +157,35 @@ function App() {
     >
       <ToastContainer />
       <Routes>
-        <Route path="/" element={<MainMenu user={{ ...auth?.user, isAdmin: user?.isAdmin }} />} />
-        <Route path="/create-race" element={<GameSelector onSelect={handleGameSelect} />} />
-        <Route path="/create-motorsport" element={<MotorsportCreateForm userId={user?.id} />} />
-        <Route path="/create-horizon" element={<HorizonCreateForm userId={user?.id} />} />
-        <Route path="/event-list" element={<EventList />} />
+        <Route path="/" element={<MainMenu user={user} />} />
+        <Route path="/create-race" element={<GameSelector />} />
+        <Route path="/create-motorsport" element={
+          <ProtectedRoute user={user}>
+            <MotorsportCreateForm user={user} />
+          </ProtectedRoute>
+        } />
+        <Route path="/create-horizon" element={
+          <ProtectedRoute user={user}>
+            <HorizonCreateForm user={user} />
+          </ProtectedRoute>
+        } />
+        <Route path="/event-list" element={<EventList user={user} />} />
         <Route path="/event/:id" element={<EventDetails user={user} />} />
         <Route path="/profile" element={<ProfilePage user={user} />} />
-        <Route path="/organization-settings" element={<OrganizationSettings user={user} auth={auth} />} />
+        <Route 
+          path="/organization-settings" 
+          element={<OrganizationSettings user={user} auth={auth} onApiError={handleApiError} />} 
+        />
+        <Route 
+          path="/register-organization" 
+          element={<OrganizationRegister user={user} auth={auth} />} 
+        />
+        <Route path="/events" element={<Navigate to="/event-list" replace />} />
+        <Route path="/edit-event/:id" element={
+          <ProtectedRoute user={user}>
+            <MotorsportEditForm user={user} />
+          </ProtectedRoute>
+        } />
       </Routes>
     </motion.div>
   );

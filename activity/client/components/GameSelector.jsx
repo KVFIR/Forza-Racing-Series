@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { IoArrowBackOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 
-const GameSelector = ({ onSelect }) => {
+const GameSelector = () => {
   const navigate = useNavigate();
   const games = [
     {
@@ -21,10 +21,11 @@ const GameSelector = ({ onSelect }) => {
   ];
 
   const handleSelect = (gameId) => {
-    if (gameId === 'fm' || gameId === 'fh5') {
+    if (gameId === 'fm') {
       navigate('/create-motorsport');
+    } else if (gameId === 'fh5') {
+      navigate('/create-horizon');
     }
-    onSelect(gameId);
   };
 
   return (
