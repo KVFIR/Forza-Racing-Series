@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import { Client, GatewayIntentBits } from 'discord.js';
 import {
   InteractionType,
   InteractionResponseType,
@@ -12,12 +11,22 @@ import { db } from './firebase.js';
 import { ref, set, get } from 'firebase/database';
 import { createRaceModal } from './modals/createRaceModal.js';
 
-// Добавьте в начало файла после импортов
+// Create an express app
+const app = express();
+// Get port, or default to 3000
+const PORT = process.env.PORT || 8080;
+
+// Добавьте метрики
+let totalCommands = 0;
+let errorCount = 0;
+
+// Обработка необработанных ошибок
 process.on('unhandledRejection', error => {
   console.error('Unhandled promise rejection:', error);
   errorCount++;
 });
 
+// Middleware для обработки ошибок
 app.use((err, req, res, next) => {
   console.error('Express error:', err);
   errorCount++;
@@ -27,18 +36,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Create an express app
-const app = express();
-// Get port, or default to 3000
-const PORT = process.env.PORT || 3000;
-
-// Добавьте логирование запросов
+// Логирование запросов
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
   next();
 });
 
-// Добавьте health check endpoint
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -47,10 +51,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Добавьте метрики
-let totalCommands = 0;
-let errorCount = 0;
-
+// Метрики
 app.get('/metrics', (req, res) => {
   res.json({
     uptime: process.uptime(),
@@ -60,23 +61,17 @@ app.get('/metrics', (req, res) => {
   });
 });
 
-/**
- * Interactions endpoint URL where Discord will send HTTP requests
- * Parse request body and verifies incoming requests using discord-interactions package
- */
+// Interactions endpoint
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
   const { type, data } = req.body;
 
-  // Сначала обрабатываем PING
   if (type === InteractionType.PING) {
     return res.send({ type: InteractionResponseType.PONG });
   }
 
-  // Для команд сразу отправляем ответ
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
     
-    // Простой ответ для каждой команды
     switch (name) {
       case 'test':
         return res.send({
@@ -115,14 +110,13 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   return res.status(400).json({ error: 'Unknown interaction type' });
 });
 
-// Тестовое соединение с Firebase
+// Тест Firebase
 const testRef = ref(db, 'test');
 try {
   await set(testRef, { test: 'Connection successful' });
   console.log('Firebase connection successful');
 } catch (error) {
   console.error('Firebase connection error:', error);
-  // Продолжаем работу бота даже при ошибке подключения к Firebase
 }
 
 app.listen(PORT, () => {
