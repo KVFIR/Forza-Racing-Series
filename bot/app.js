@@ -65,96 +65,78 @@ client.login(process.env.DISCORD_TOKEN);
  * Parse request body and verifies incoming requests using discord-interactions package
  */
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
-  const { type, data, member } = req.body;
-  
-  console.log('Received interaction:', type, data); // Добавляем логирование
+  const { type, data } = req.body;
 
-  /**
-   * Handle verification requests
-   */
-  if (type === InteractionType.PING) {
-    return res.send({ type: InteractionResponseType.PONG });
-  }
-
-  /**
-   * Handle slash command requests
-   * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
-   */
+  // Немедленно отправляем DEFERRED ответ для всех команд
   if (type === InteractionType.APPLICATION_COMMAND) {
-    const { name } = data;
-    const userId = member.user.id;
-    const username = member.user.username;
+    await res.send({
+      type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+    });
 
     try {
+      const { name } = data;
+      const userId = req.body.member.user.id;
+      const username = req.body.member.user.username;
+
+      // Получаем или создаем пользователя
       let user = await getUser(userId);
       if (!user) {
         await createUser(userId, username);
         user = { score: 0 };
       }
 
-      console.log('Received command:', name); // Логируем полученную команду
+      // Подготавливаем ответ
+      let response = {
+        content: 'Processing command...'
+      };
 
-      // "test" command
-      if (name === 'test') {
-        // Send a message into the channel where command was triggered from
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            // Fetches a random emoji to send from a helper function
-            content: `hello world ${getRandomEmoji()}`,
-          },
-        });
+      // Обрабатываем команды
+      switch (name) {
+        case 'test':
+          response.content = `hello world ${getRandomEmoji()}`;
+          break;
+        case 'challenge':
+          response.content = 'Challenge accepted!';
+          break;
+        case 'score':
+          response.content = `Your current score is: ${user.score || 0}`;
+          break;
+        case 'add_score':
+          const newScore = (user.score || 0) + 1;
+          await updateUserScore(userId, newScore);
+          response.content = `Your score has been increased to ${newScore}!`;
+          break;
+        case 'create_race':
+          return await DiscordRequest(`/webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`, {
+            method: 'PATCH',
+            body: createRaceModal()
+          });
+        default:
+          response.content = 'Unknown command';
       }
 
-      // "challenge" command
-      if (name === 'challenge') {
-        // Обработка команды challenge
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Challenge accepted!',
-          },
-        });
-      }
+      // Отправляем финальный ответ через webhook
+      await DiscordRequest(`/webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`, {
+        method: 'PATCH',
+        body: response
+      });
 
-      if (name === 'score') {
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `Your current score is: ${user.score || 0}`,
-          },
-        });
-      }
-
-      if (name === 'add_score') {
-        const newScore = (user.score || 0) + 1;
-        await updateUserScore(userId, newScore);
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `Your score has been increased to ${newScore}!`,
-          },
-        });
-      }
-
-      if (name === 'create_race') {
-        return res.send(createRaceModal());
-      }
-
-      console.error(`Unknown command: ${name}`);
-      return res.status(400).json({ error: 'Unknown command' });
     } catch (error) {
       console.error('Error processing command:', error);
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: 'An error occurred while processing your command. Please try again later.',
-        },
+      await DiscordRequest(`/webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`, {
+        method: 'PATCH',
+        body: {
+          content: 'An error occurred while processing your command.'
+        }
       });
     }
+    return;
   }
 
-  console.error('Unknown interaction type:', type);
+  if (type === InteractionType.PING) {
+    return res.send({ type: InteractionResponseType.PONG });
+  }
+
   return res.status(400).json({ error: 'Unknown interaction type' });
 });
 
