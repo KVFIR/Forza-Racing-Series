@@ -11,22 +11,20 @@ import { db } from './firebase.js';
 import { ref, set, get } from 'firebase/database';
 import { createRaceModal } from './modals/createRaceModal.js';
 
-// Create an express app
 const app = express();
-// Get port, or default to 3000
 const PORT = process.env.PORT || 8080;
 
-// Добавьте метрики
+// Metrics
 let totalCommands = 0;
 let errorCount = 0;
 
-// Обработка необработанных ошибок
+// Unhandled promise rejection
 process.on('unhandledRejection', error => {
   console.error('Unhandled promise rejection:', error);
   errorCount++;
 });
 
-// Middleware для обработки ошибок
+// Express error handling
 app.use((err, req, res, next) => {
   console.error('Express error:', err);
   errorCount++;
@@ -36,7 +34,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Логирование запросов
+// Logging requests
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
   next();
@@ -51,7 +49,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Метрики
+// Metrics
 app.get('/metrics', (req, res) => {
   res.json({
     uptime: process.uptime(),
@@ -110,7 +108,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   return res.status(400).json({ error: 'Unknown interaction type' });
 });
 
-// Тест Firebase
+// Test Firebase
 const testRef = ref(db, 'test');
 try {
   await set(testRef, { test: 'Connection successful' });
