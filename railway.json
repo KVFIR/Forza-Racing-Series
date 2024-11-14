@@ -1,0 +1,12 @@
+{
+    "build": {
+      "builder": "DOCKERFILE",
+      "dockerfilePath": "bot/Dockerfile"
+    },
+    "deploy": {
+      "startCommand": "npm start",
+      "healthcheckPath": "/health",
+      "healthcheckTimeout": 100,
+      "restartPolicyType": "ON_FAILURE"
+    }
+  }

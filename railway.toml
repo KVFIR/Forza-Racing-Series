@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd bot && npm install"
+watchPatterns = ["bot/**/*"]
+
+[deploy]
+startCommand = "cd bot && npm start"
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"

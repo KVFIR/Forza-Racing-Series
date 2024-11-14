@@ -12,10 +12,43 @@ import { db } from './firebase.js';
 import { ref, set, get } from 'firebase/database';
 import { createRaceModal } from './modals/createRaceModal.js';
 
+// Добавьте в начало файла после импортов
+process.on('unhandledRejection', error => {
+  console.error('Unhandled promise rejection:', error);
+});
+
 // Create an express app
 const app = express();
 // Get port, or default to 3000
 const PORT = process.env.PORT || 3000;
+
+// Добавьте логирование запросов
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+  next();
+});
+
+// Добавьте health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Добавьте метрики
+let totalCommands = 0;
+let errorCount = 0;
+
+app.get('/metrics', (req, res) => {
+  res.json({
+    uptime: process.uptime(),
+    totalCommands,
+    errorCount,
+    memoryUsage: process.memoryUsage()
+  });
+});
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -127,9 +160,13 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
 // Тестовое соединение с Firebase
 const testRef = ref(db, 'test');
-set(testRef, { test: 'Connection successful' })
-  .then(() => console.log('Firebase connection successful'))
-  .catch(error => console.error('Firebase connection error:', error));
+try {
+  await set(testRef, { test: 'Connection successful' });
+  console.log('Firebase connection successful');
+} catch (error) {
+  console.error('Firebase connection error:', error);
+  // Продолжаем работу бота даже при ошибке подключения к Firebase
+}
 
 app.listen(PORT, () => {
   console.log('Listening on port', PORT);
