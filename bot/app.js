@@ -63,45 +63,74 @@ app.get('/metrics', (req, res) => {
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
   const { type, data } = req.body;
 
+  // Увеличиваем счетчик команд для метрик
+  totalCommands++;
+
   if (type === InteractionType.PING) {
     return res.send({ type: InteractionResponseType.PONG });
   }
 
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
+    const userId = req.body.member.user.id;
+    const username = req.body.member.user.username;
     
-    switch (name) {
-      case 'test':
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `hello world ${getRandomEmoji()}`
-          }
-        });
-      
-      case 'challenge':
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Challenge accepted!'
-          }
-        });
-      
-      case 'score':
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Score command received'
-          }
-        });
-      
-      default:
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Unknown command'
-          }
-        });
+    try {
+      // Получаем или создаем пользователя
+      let user = await getUser(userId);
+      if (!user) {
+        await createUser(userId, username);
+        user = { score: 0 };
+      }
+
+      switch (name) {
+        case 'test':
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `Hello ${username}! Bot is working ${getRandomEmoji()}`
+            }
+          });
+        
+        case 'challenge':
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `${username} has started a new challenge! Current score: ${user.score || 0}`
+            }
+          });
+        
+        case 'score':
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `${username}'s current score is: ${user.score || 0} points`
+            }
+          });
+        
+        case 'create_race':
+          return res.send({
+            type: InteractionResponseType.MODAL,
+            data: createRaceModal()
+          });
+        
+        default:
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `Unknown command "${name}". Available commands: /test, /challenge, /score, /create_race`
+            }
+          });
+      }
+    } catch (error) {
+      console.error('Error processing command:', error);
+      errorCount++;
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'An error occurred while processing your command.'
+        }
+      });
     }
   }
 
