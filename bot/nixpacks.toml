@@ -1,12 +1,11 @@
 [phases.setup]
-nixPkgs = ['nodejs', 'npm']
+nixPkgs = ['nodejs-18_x']
 
 [phases.install]
-cmds = ['npm install']
+cmds = ['npm install --production']
 
 [phases.build]
 cmds = ['npm run register']
 
 [start]
 cmd = 'npm start'
-watchPatterns = ['bot/**/*']
