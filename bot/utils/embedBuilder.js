@@ -10,7 +10,7 @@ export function createEventEmbed(data) {
     title: data.title,
     url: "",
     color: 460551,
-    description: "📜 [Rules]\n🚘 [Cars]\n🗺️ [Track]",
+    description: "",
     thumbnail: {
       url: ""
     },
@@ -22,8 +22,16 @@ export function createEventEmbed(data) {
     },
     fields: [
       {
-        name: "📅 Registration closes",
-        value: `<t:${data.registration_close}:R>`
+        name: "📅 Date",
+        value: `Day 1: TBA\nDay 2: TBA`
+      },
+      {
+        name: "🚘 Cars",
+        value: `[Ford Mustang Shelby GT350R (2016)](https://discord.com/channels/983016177146155069/1308730927614263308)\n[Mercedes-AMG GT R (2017)](https://discord.com/channels/983016177146155069/1308731405320192022)\n[Jaguar XKR-S GT (2015)](https://discord.com/channels/983016177146155069/1308731832941940756)\n[Chevrolet Camaro Z/28 (2015)](https://discord.com/channels/983016177146155069/1308732311591714878)\n[Porsche Cayman GT4 (2016)](https://discord.com/channels/983016177146155069/1308732612965175316)\n[Aston Martin Vantage GT12 (2015)](https://discord.com/channels/983016177146155069/1308732751247052830)`
+      },
+      {
+        name: "🛣️ Tracks",
+        value: `TBA`
       },
       {
         name: `👥 Participants (${participants.length}/${data.max_participants})`,

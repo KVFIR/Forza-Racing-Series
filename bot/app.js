@@ -120,14 +120,36 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             throw new Error('No options provided for create_event command');
           }
 
+          const roleId = data.options.find(opt => opt.name === 'role')?.value;
+          console.log('Creating event with role:', roleId);
+          
+          if (!roleId) {
+            throw new Error('Role ID is required');
+          }
+
           const eventData = {
-            title: data.options.find(opt => opt.name === 'title')?.value || 'Untitled Event',
+            title: 'Race Event',
             registration_close: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-            max_participants: data.options.find(opt => opt.name === 'max_participants')?.value || 48
+            max_participants: 48,
+            role_id: roleId
           };
 
           try {
-            // Отправляем сообщение и ждем ответа
+            // Создаем временный ключ для события
+            const eventKey = Date.now();
+            const eventRef = ref(db, `events/${eventKey}`);
+
+            // Сначала сохраняем базовые данные события
+            await set(eventRef, {
+              ...eventData,
+              created_at: Date.now(),
+              participants: [],
+              channel_id: req.body.channel_id,
+              interaction_id: req.body.id,
+              message_ids: []
+            });
+
+            // Отправляем сообщение
             const response = await res.send({
               type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
               data: {
@@ -136,19 +158,24 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               }
             });
 
-            // Добавляем задержку, чтобы дать Discord время на создание сообщения
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Получаем ID сообщения из ответа
+            const messageId = req.body.id;
 
-            // Сохраняем информацию о событии в Firebase
-            const eventRef = ref(db, `events/${Date.now()}`);
+            // Обновляем событие с ID сообщения
             await set(eventRef, {
               ...eventData,
               created_at: Date.now(),
               participants: [],
               channel_id: req.body.channel_id,
               interaction_id: req.body.id,
-              // Сохраняем оба ID для надежности
-              message_ids: [req.body.id, req.body.message?.id].filter(Boolean)
+              message_ids: [messageId]
+            });
+
+            console.log('Event created with data:', {
+              eventKey,
+              messageId,
+              channelId: req.body.channel_id,
+              interactionId: req.body.id
             });
 
             return;
@@ -214,9 +241,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               looking_for_channel: req.body.channel_id
             });
             
-            if ((event.message_ids && event.message_ids.includes(messageId)) || 
-                (event.channel_id === req.body.channel_id && 
-                 Math.abs(parseInt(childSnapshot.key) - Date.now()) < 10000)) {
+            if (
+              (event.message_ids && event.message_ids.includes(messageId)) || 
+              (event.channel_id === req.body.channel_id && 
+               Math.abs(parseInt(childSnapshot.key) - Date.now()) < 30000) ||
+              event.interaction_id === req.body.message.interaction?.id ||
+              (event.channel_id === req.body.channel_id && 
+               event.created_at === Math.max(...Object.values(snapshot.val()).map(e => e.created_at)))
+            ) {
               eventFound = true;
               eventData = event;
               eventKey = childSnapshot.key;
@@ -269,6 +301,40 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             username: username,
             registered_at: Date.now()
           });
+
+          // Добавляем роль участнику
+          try {
+            console.log('Adding role to user:', {
+              guild_id: req.body.guild_id,
+              user_id: userId,
+              role_id: eventData.role_id
+            });
+
+            const response = await fetch(
+              `https://discord.com/api/v10/guilds/${req.body.guild_id}/members/${userId}/roles/${eventData.role_id}`,
+              {
+                method: 'PUT',
+                headers: {
+                  Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              console.error('Error response from Discord:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorData
+              });
+              throw new Error(`Failed to add role: ${response.status} ${response.statusText}`);
+            }
+
+            console.log('Role added successfully');
+          } catch (error) {
+            console.error('Error adding role:', error);
+          }
 
           // Обновляем данные в Firebase
           await set(ref(db, `events/${eventKey}`), {
@@ -323,9 +389,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               looking_for_channel: req.body.channel_id
             });
             
-            if ((event.message_ids && event.message_ids.includes(messageId)) || 
-                (event.channel_id === req.body.channel_id && 
-                 Math.abs(parseInt(childSnapshot.key) - Date.now()) < 10000)) {
+            if (
+              (event.message_ids && event.message_ids.includes(messageId)) || 
+              (event.channel_id === req.body.channel_id && 
+               Math.abs(parseInt(childSnapshot.key) - Date.now()) < 30000) ||
+              event.interaction_id === req.body.message.interaction?.id ||
+              (event.channel_id === req.body.channel_id && 
+               event.created_at === Math.max(...Object.values(snapshot.val()).map(e => e.created_at)))
+            ) {
               eventFound = true;
               eventData = event;
               eventKey = childSnapshot.key;
@@ -352,6 +423,40 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
           // Удаляем участника
           const updatedParticipants = participants.filter(p => p.id !== userId);
+
+          // Удаляем роль у участника
+          try {
+            console.log('Removing role from user:', {
+              guild_id: req.body.guild_id,
+              user_id: userId,
+              role_id: eventData.role_id
+            });
+
+            const response = await fetch(
+              `https://discord.com/api/v10/guilds/${req.body.guild_id}/members/${userId}/roles/${eventData.role_id}`,
+              {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              console.error('Error response from Discord:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorData
+              });
+              throw new Error(`Failed to remove role: ${response.status} ${response.statusText}`);
+            }
+
+            console.log('Role removed successfully');
+          } catch (error) {
+            console.error('Error removing role:', error);
+          }
 
           // Обновляем данные в Firebase
           await set(ref(db, `events/${eventKey}`), {

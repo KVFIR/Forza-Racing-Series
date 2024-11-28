@@ -56,21 +56,9 @@ async function cleanupCommands() {
         type: 1,
         options: [
           {
-            name: 'title',
-            description: 'Event title',
-            type: 3, // STRING
-            required: true
-          },
-          {
-            name: 'registration_close',
-            description: 'Registration close date (Unix timestamp)',
-            type: 4, // INTEGER
-            required: true
-          },
-          {
-            name: 'max_participants',
-            description: 'Maximum number of participants',
-            type: 4, // INTEGER
+            name: 'role',
+            description: 'Role to assign to participants',
+            type: 8, // ROLE type
             required: true
           }
         ]
