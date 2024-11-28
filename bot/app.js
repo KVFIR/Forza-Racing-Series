@@ -122,25 +122,40 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
           const eventData = {
             title: data.options.find(opt => opt.name === 'title')?.value || 'Untitled Event',
-            registration_close: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // По умолчанию через неделю
+            registration_close: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
             max_participants: data.options.find(opt => opt.name === 'max_participants')?.value || 48
           };
 
-          // Сохраняем информацию о событии в Firebase
-          const eventRef = ref(db, `events/${Date.now()}`);
-          await set(eventRef, {
-            ...eventData,
-            created_at: Date.now(),
-            participants: []
-          });
+          try {
+            // Отправляем сообщение и ждем ответа
+            const response = await res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                embeds: [createEventEmbed(eventData)],
+                components: [createEventButtons()]
+              }
+            });
 
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              embeds: [createEventEmbed(eventData)],
-              components: [createEventButtons()]
-            }
-          });
+            // Добавляем задержку, чтобы дать Discord время на создание сообщения
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Сохраняем информацию о событии в Firebase
+            const eventRef = ref(db, `events/${Date.now()}`);
+            await set(eventRef, {
+              ...eventData,
+              created_at: Date.now(),
+              participants: [],
+              channel_id: req.body.channel_id,
+              interaction_id: req.body.id,
+              // Сохраняем оба ID для надежности
+              message_ids: [req.body.id, req.body.message?.id].filter(Boolean)
+            });
+
+            return;
+          } catch (error) {
+            console.error('Error creating event:', error);
+            throw error;
+          }
         
         default:
           return res.send({
@@ -157,6 +172,227 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: 'An error occurred while processing your command.'
+        }
+      });
+    }
+  }
+
+  if (type === InteractionType.MESSAGE_COMPONENT) {
+    const { custom_id } = data;
+    const userId = req.body.member.user.id;
+    const username = req.body.member.user.username;
+    const messageId = req.body.message.id;
+
+    try {
+      switch (custom_id) {
+        case 'register_event': {
+          console.log('Processing registration. Message data:', {
+            message_id: messageId,
+            channel_id: req.body.channel_id,
+            interaction_id: req.body.id
+          });
+          
+          const eventRef = ref(db, `events`);
+          const snapshot = await get(eventRef);
+          
+          if (!snapshot.exists()) {
+            console.log('No events found in database');
+            throw new Error('Event not found');
+          }
+
+          let eventFound = false;
+          let eventData = null;
+          let eventKey = null;
+
+          snapshot.forEach((childSnapshot) => {
+            const event = childSnapshot.val();
+            console.log('Checking event:', {
+              key: childSnapshot.key,
+              event_message_ids: event.message_ids,
+              event_channel_id: event.channel_id,
+              looking_for_message: messageId,
+              looking_for_channel: req.body.channel_id
+            });
+            
+            if ((event.message_ids && event.message_ids.includes(messageId)) || 
+                (event.channel_id === req.body.channel_id && 
+                 Math.abs(parseInt(childSnapshot.key) - Date.now()) < 10000)) {
+              eventFound = true;
+              eventData = event;
+              eventKey = childSnapshot.key;
+              return true;
+            }
+          });
+
+          if (!eventFound) {
+            console.log('Event not found for message ID:', messageId);
+            throw new Error('Event not found');
+          }
+
+          // Проверяем, не закрыта ли регистрация
+          if (Date.now() / 1000 > eventData.registration_close) {
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                content: 'Registration is closed for this event.',
+                flags: 64 // Эфемерное сообщение
+              }
+            });
+          }
+
+          // Проверяем, не зарегистрирован ли уже пользователь
+          const participants = eventData.participants || [];
+          if (participants.some(p => p.id === userId)) {
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                content: 'You are already registered for this event.',
+                flags: 64
+              }
+            });
+          }
+
+          // Проверяем, не превышен ли лимит участников
+          if (participants.length >= eventData.max_participants) {
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                content: 'This event is full.',
+                flags: 64
+              }
+            });
+          }
+
+          // Добавляем участника
+          participants.push({
+            id: userId,
+            username: username,
+            registered_at: Date.now()
+          });
+
+          // Обновляем данные в Firebase
+          await set(ref(db, `events/${eventKey}`), {
+            ...eventData,
+            participants,
+            message_ids: [...(eventData.message_ids || []), messageId].filter((id, index, self) => 
+              self.indexOf(id) === index // Убираем дубликаты
+            )
+          });
+
+          // Обновляем сообщение с событием
+          const updatedEmbed = createEventEmbed({
+            ...eventData,
+            participants
+          });
+
+          return res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              embeds: [updatedEmbed],
+              components: [createEventButtons()]
+            }
+          });
+        }
+
+        case 'cancel_registration': {
+          console.log('Processing cancellation. Message data:', {
+            message_id: messageId,
+            channel_id: req.body.channel_id,
+            interaction_id: req.body.id
+          });
+          
+          const eventRef = ref(db, `events`);
+          const snapshot = await get(eventRef);
+          
+          if (!snapshot.exists()) {
+            console.log('No events found in database');
+            throw new Error('Event not found');
+          }
+
+          let eventFound = false;
+          let eventData = null;
+          let eventKey = null;
+
+          snapshot.forEach((childSnapshot) => {
+            const event = childSnapshot.val();
+            console.log('Checking event:', {
+              key: childSnapshot.key,
+              event_message_ids: event.message_ids,
+              event_channel_id: event.channel_id,
+              looking_for_message: messageId,
+              looking_for_channel: req.body.channel_id
+            });
+            
+            if ((event.message_ids && event.message_ids.includes(messageId)) || 
+                (event.channel_id === req.body.channel_id && 
+                 Math.abs(parseInt(childSnapshot.key) - Date.now()) < 10000)) {
+              eventFound = true;
+              eventData = event;
+              eventKey = childSnapshot.key;
+              return true;
+            }
+          });
+
+          if (!eventFound) {
+            console.log('Event not found for message ID:', messageId);
+            throw new Error('Event not found');
+          }
+
+          // Проверяем, зарегистрирован ли пользователь
+          const participants = eventData.participants || [];
+          if (!participants.some(p => p.id === userId)) {
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                content: 'You are not registered for this event.',
+                flags: 64
+              }
+            });
+          }
+
+          // Удаляем участника
+          const updatedParticipants = participants.filter(p => p.id !== userId);
+
+          // Обновляем данные в Firebase
+          await set(ref(db, `events/${eventKey}`), {
+            ...eventData,
+            participants: updatedParticipants,
+            message_ids: [...(eventData.message_ids || []), messageId].filter((id, index, self) => 
+              self.indexOf(id) === index // Убираем дубликаты
+            )
+          });
+
+          // Обновляем сообщение с событием
+          const updatedEmbed = createEventEmbed({
+            ...eventData,
+            participants: updatedParticipants
+          });
+
+          return res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              embeds: [updatedEmbed],
+              components: [createEventButtons()]
+            }
+          });
+        }
+
+        default:
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: 'Unknown button interaction',
+              flags: 64
+            }
+          });
+      }
+    } catch (error) {
+      console.error('Error handling button interaction:', error);
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'An error occurred while processing your request.',
+          flags: 64
         }
       });
     }
