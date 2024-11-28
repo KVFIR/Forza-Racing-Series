@@ -6,10 +6,11 @@ import {
   verifyKeyMiddleware,
 } from 'discord-interactions';
 import { getRandomEmoji } from './utils.js';
-import { getUser, createUser, updateUserScore } from './database.js';
+import { getUser, createUser } from './database.js';
 import { db } from './firebase.js';
 import { ref, set, get } from 'firebase/database';
 import { createRaceModal } from './modals/createRaceModal.js';
+import { createEventEmbed, createEventButtons } from './utils/embedBuilder.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -114,11 +115,38 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             data: createRaceModal()
           });
         
+        case 'create_event':
+          if (!data.options) {
+            throw new Error('No options provided for create_event command');
+          }
+
+          const eventData = {
+            title: data.options.find(opt => opt.name === 'title')?.value || 'Untitled Event',
+            registration_close: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // По умолчанию через неделю
+            max_participants: data.options.find(opt => opt.name === 'max_participants')?.value || 48
+          };
+
+          // Сохраняем информацию о событии в Firebase
+          const eventRef = ref(db, `events/${Date.now()}`);
+          await set(eventRef, {
+            ...eventData,
+            created_at: Date.now(),
+            participants: []
+          });
+
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              embeds: [createEventEmbed(eventData)],
+              components: [createEventButtons()]
+            }
+          });
+        
         default:
           return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
-              content: `Unknown command "${name}". Available commands: /test, /challenge, /score, /create_race`
+              content: `Unknown command "${name}". Available commands: /test, /challenge, /score, /create_race, /create_event`
             }
           });
       }
