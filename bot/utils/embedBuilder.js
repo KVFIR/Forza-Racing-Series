@@ -18,12 +18,12 @@ export function createEventEmbed(data) {
       text: "powered by FRS"
     },
     image: {
-      url: "https://cdn.discordapp.com/attachments/1257009511479246902/1311441599716266095/Picsart_24-10-31_22-39-26-706.png?ex=6748deaa&is=67478d2a&hm=7e3de6f2844c56d956417bc69c17cfd514174e5bb0949948b8624b1d0f1b64dc&"
+      url: "https://cdn.discordapp.com/attachments/1192170720311132282/1312114162893062194/Picsart_24-11-29_23-53-04-999.jpg?ex=674b510a&is=6749ff8a&hm=5ece28136107a1724b89f0602c2c0a15eab136c26776d9ff383cb69e4f49c749&"
     },
     fields: [
       {
         name: "📅 Date",
-        value: `Day 1: TBA\nDay 2: TBA`
+        value: `Day 1: <t:1734789600:f>\nDay 2: <t:1734876000:f>`
       },
       {
         name: "🚘 Cars",

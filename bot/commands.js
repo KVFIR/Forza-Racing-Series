@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import { REST } from '@discordjs/rest';
-import { Routes } from 'discord-api-types/v9';
+import { Routes } from 'discord-api-types/v10';
 
 async function cleanupCommands() {
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -14,40 +14,35 @@ async function cleanupCommands() {
       Routes.applicationCommands(process.env.APP_ID)
     );
     
-    // Находим Entry Point команду
+    // Находим Entry Point команду и сохраняем все её свойства
     const entryPointCommand = existingCommands.find(cmd => cmd.name === 'launch');
     
     if (!entryPointCommand) {
       console.error('Entry Point command not found!');
       return;
     }
+
+    // Сохраняем точную копию Entry Point команды
+    const entryPoint = {
+      id: entryPointCommand.id,
+      application_id: entryPointCommand.application_id,
+      name: entryPointCommand.name,
+      description: entryPointCommand.description,
+      version: entryPointCommand.version,
+      type: entryPointCommand.type,
+      options: entryPointCommand.options || [],
+      default_member_permissions: entryPointCommand.default_member_permissions,
+      dm_permission: entryPointCommand.dm_permission,
+      contexts: entryPointCommand.contexts,
+      integration_types: entryPointCommand.integration_types,
+    };
     
-    // Создаем новый список команд, начиная с Entry Point
+    // Создаем новый список команд
     const commands = [
-      {
-        name: entryPointCommand.name,
-        description: entryPointCommand.description,
-        type: entryPointCommand.type,
-        ...entryPointCommand
-      },
+      entryPoint, // Используем точную копию
       {
         name: 'test',
         description: 'Basic command',
-        type: 1,
-      },
-      {
-        name: 'challenge',
-        description: 'Challenge to a match',
-        type: 1,
-      },
-      {
-        name: 'score',
-        description: 'Check your current score',
-        type: 1,
-      },
-      {
-        name: 'create_race',
-        description: 'Start the process of creating a new race',
         type: 1,
       },
       {
@@ -65,9 +60,8 @@ async function cleanupCommands() {
       }
     ];
     
-    console.log('Updating commands...');
+    console.log('Updating commands with Entry Point:', entryPoint);
     
-    // Обновляем команды
     await rest.put(
       Routes.applicationCommands(process.env.APP_ID),
       { body: commands }
@@ -77,7 +71,11 @@ async function cleanupCommands() {
     
   } catch (error) {
     console.error('Error updating commands:', error);
+    if (error.code === 50240) {
+      console.error('Entry Point command error. Please check the command configuration.');
+    }
+    throw error;
   }
 }
 
-cleanupCommands();
+export { cleanupCommands };
