@@ -7,12 +7,15 @@ async function cleanupCommands() {
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   
   try {
-    console.log('Getting existing commands...');
+    console.log('Starting command registration...');
+    console.log('APP_ID:', process.env.APP_ID); // Скроем часть ID для безопасности
     
     // Получаем существующие команды
+    console.log('Getting existing commands...');
     const existingCommands = await rest.get(
       Routes.applicationCommands(process.env.APP_ID)
     );
+    console.log('Existing commands:', existingCommands.map(cmd => cmd.name));
     
     // Находим Entry Point команду и сохраняем все её свойства
     const entryPointCommand = existingCommands.find(cmd => cmd.name === 'launch');
@@ -62,18 +65,16 @@ async function cleanupCommands() {
     
     console.log('Updating commands with Entry Point:', entryPoint);
     
+    console.log('Updating commands...');
     await rest.put(
       Routes.applicationCommands(process.env.APP_ID),
       { body: commands }
     );
     
-    console.log('Successfully updated application commands.');
+    console.log('Successfully updated application commands!');
     
   } catch (error) {
     console.error('Error updating commands:', error);
-    if (error.code === 50240) {
-      console.error('Entry Point command error. Please check the command configuration.');
-    }
     throw error;
   }
 }
