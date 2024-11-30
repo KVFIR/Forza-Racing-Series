@@ -207,6 +207,7 @@ Event: ${eventData.title}`
 // Отмена регистрации
 export async function handleCancelRegistration(req, res) {
   const userId = req.body.member.user.id;
+  const username = req.body.member.user.username;
   const messageId = req.body.message.id;
 
   try {
@@ -351,6 +352,7 @@ async function addRoleToUser(guildId, userId, roleId) {
   }
 }
 
+// Вспомогательная функция для обновления события
 async function updateEvent(eventKey, eventData, participants, messageId) {
   await set(ref(db, `events/${eventKey}`), {
     ...eventData,
