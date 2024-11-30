@@ -18,7 +18,7 @@ export function createEventEmbed(data) {
       text: "powered by FRS"
     },
     image: {
-      url: "https://cdn.discordapp.com/attachments/1192170720311132282/1312114162893062194/Picsart_24-11-29_23-53-04-999.jpg?ex=674b510a&is=6749ff8a&hm=5ece28136107a1724b89f0602c2c0a15eab136c26776d9ff383cb69e4f49c749&"
+      url: "https://cdn.discordapp.com/attachments/1192170720311132282/1312388356449107968/IMG_20220720_0121372.png?ex=674c5067&is=674afee7&hm=bbeecd025fb4d5b7eb97c8f96e42770745a53533e6019458e14cd6b0b6593903&"
     },
     fields: [
       {

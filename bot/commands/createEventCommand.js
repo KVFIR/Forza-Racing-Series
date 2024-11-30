@@ -19,8 +19,7 @@ export async function handleCreateEvent(req, res) {
   }
 
   const eventData = {
-    title: 'Race Event',
-    registration_close: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+    title: 'HEAVY is the CROWN',
     max_participants: 48,
     role_id: roleId
   };
