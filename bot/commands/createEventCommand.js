@@ -79,17 +79,66 @@ function createRegistrationModal(customId) {
           ]
         },
         {
-          type: 1, // ACTION_ROW
+          type: 1,
           components: [
             {
-              type: 4, // TEXT_INPUT
+              type: 4,
               custom_id: "twitch_username",
               label: "Twitch Username (optional)",
-              style: 1, // SHORT style
+              style: 1,
               min_length: 1,
               max_length: 50,
               required: false,
               placeholder: "Enter your Twitch username (optional)"
+            }
+          ]
+        },
+        {
+          type: 1,
+          components: [
+            {
+              type: 3, // SELECT_MENU
+              custom_id: "car_choice",
+              placeholder: "Select your car",
+              options: [
+                {
+                  label: "Ford Mustang Shelby GT350R",
+                  value: "mustang_gt350r",
+                  description: "2016",
+                  emoji: "🏎️"
+                },
+                {
+                  label: "Mercedes-AMG GT R",
+                  value: "amg_gtr",
+                  description: "2017",
+                  emoji: "🏎️"
+                },
+                {
+                  label: "Jaguar XKR-S GT",
+                  value: "jaguar_xkrs_gt",
+                  description: "2015",
+                  emoji: "🏎️"
+                },
+                {
+                  label: "Chevrolet Camaro Z/28",
+                  value: "camaro_z28",
+                  description: "2015",
+                  emoji: "🏎️"
+                },
+                {
+                  label: "Porsche Cayman GT4",
+                  value: "cayman_gt4",
+                  description: "2016",
+                  emoji: "🏎️"
+                },
+                {
+                  label: "Aston Martin Vantage GT12",
+                  value: "vantage_gt12",
+                  description: "2015",
+                  emoji: "🏎️"
+                }
+              ],
+              required: true
             }
           ]
         }
@@ -172,7 +221,7 @@ export async function handleRegisterEvent(req, res) {
       `📝 **New Registration**
 User: ${username} (<@${userId}>)
 Xbox: ${xboxNickname}
-Twitch: ${twitchUsername || 'Not provided'}
+Twitch: ${twitchUsername ? `[${twitchUsername}](https://www.twitch.tv/${twitchUsername})` : 'Not provided'}
 Event: ${eventData.title}`
     );
 
