@@ -4,6 +4,7 @@ import {
   InteractionType,
   InteractionResponseType,
   verifyKeyMiddleware,
+  MessageComponentTypes
 } from 'discord-interactions';
 import { getUser, createUser } from './database.js';
 import { db } from './firebase.js';
@@ -100,21 +101,38 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
   }
 
-  if (type === InteractionType.MESSAGE_COMPONENT) {
+  if (type === InteractionType.MESSAGE_COMPONENT || type === InteractionType.MODAL_SUBMIT) {
     const { custom_id } = data;
     
+    console.log('Interaction received:', {
+      type,
+      custom_id,
+      data: JSON.stringify(data)
+    });
+    
     try {
-      switch (custom_id) {
-        case 'register_event':
-          return handleRegisterEvent(req, res);
-        case 'cancel_registration':
-          return handleCancelRegistration(req, res);
-        default:
-          console.error(`Unknown component: ${custom_id}`);
-          return res.status(400).json({ error: 'Unknown component' });
+      // Для кнопки регистрации
+      if (custom_id === 'register_event') {
+        console.log('Register event button clicked');
+        return handleRegisterEvent(req, res);
       }
+      
+      // Для модального окна
+      if (custom_id?.startsWith('register_modal_')) {
+        console.log('Modal submission received');
+        return handleRegisterEvent(req, res);
+      }
+      
+      // Для отмены регистрации
+      if (custom_id === 'cancel_registration') {
+        console.log('Cancel registration button clicked');
+        return handleCancelRegistration(req, res);
+      }
+
+      console.error(`Unknown component: ${custom_id}`);
+      return res.status(400).json({ error: 'Unknown component' });
     } catch (error) {
-      console.error('Error handling button interaction:', error);
+      console.error('Error handling interaction:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
