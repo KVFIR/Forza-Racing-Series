@@ -1,4 +1,4 @@
-import { InteractionResponseType } from 'discord-interactions';
+import { InteractionResponseType, MessageComponentTypes, InteractionType } from 'discord-interactions';
 import { createEventEmbed, createEventButtons } from '../utils/embedBuilder.js';
 import { ref, set, get } from 'firebase/database';
 import { db } from '../firebase.js';
@@ -50,71 +50,92 @@ export async function handleCreateEvent(req, res) {
   }
 }
 
-// Регистрация на событие
+// Функция создания модального окна для регистрации
+function createRegistrationModal(customId) {
+  return {
+    type: InteractionResponseType.MODAL,
+    data: {
+      custom_id: `register_modal_${customId}`,
+      title: "Event Registration",
+      components: [
+        {
+          type: MessageComponentTypes.ACTION_ROW,
+          components: [
+            {
+              type: MessageComponentTypes.TEXT_INPUT,
+              custom_id: "xbox_nickname",
+              label: "XBOX Nickname",
+              style: 1, // SHORT style
+              min_length: 1,
+              max_length: 50,
+              required: true,
+              placeholder: "Enter your XBOX nickname"
+            }
+          ]
+        },
+        {
+          type: MessageComponentTypes.ACTION_ROW,
+          components: [
+            {
+              type: MessageComponentTypes.TEXT_INPUT,
+              custom_id: "twitch_username",
+              label: "Twitch Username (optional)",
+              style: 1, // SHORT style
+              min_length: 1,
+              max_length: 50,
+              required: false,
+              placeholder: "Enter your Twitch username (optional)"
+            }
+          ]
+        }
+      ]
+    }
+  };
+}
+
+// Обновляем обработчик регистрации
 export async function handleRegisterEvent(req, res) {
-  const { custom_id } = req.body.data;
-  const userId = req.body.member.user.id;
-  const username = req.body.member.user.username;
-  const messageId = req.body.message.id;
+  const { type } = req.body;
 
-  try {
-    console.log('Processing registration. Message data:', {
-      message_id: messageId,
-      channel_id: req.body.channel_id,
-      interaction_id: req.body.id
-    });
+  // Если это первичное нажатие на кнопку - показываем модальное окно
+  if (type === InteractionType.MESSAGE_COMPONENT) {
+    const customId = req.body.message.id;
+    return res.send(createRegistrationModal(customId));
+  }
+
+  // Если это отправка формы - обрабатываем данные
+  if (type === InteractionType.MODAL_SUBMIT) {
+    const userId = req.body.member.user.id;
+    const username = req.body.member.user.username;
+    const xboxNickname = req.body.data.components[0].components[0].value;
+    const twitchUsername = req.body.data.components[1].components[0].value;
+
+    // ... остальной код регистрации ...
+    const messageId = req.body.message.id;
+    const eventKey = `event_${messageId}`;
     
-    const eventRef = ref(db, `events`);
+    // Получаем данные события
+    const eventRef = ref(db, `events/${eventKey}`);
     const snapshot = await get(eventRef);
-    
-    if (!snapshot.exists()) {
-      console.log('No events found in database');
-      throw new Error('Event not found');
-    }
+    const eventData = snapshot.val();
 
-    const event = await findEvent(snapshot, messageId, req.body.channel_id, req.body.message.interaction?.id);
-    if (!event) {
-      throw new Error('Event not found');
-    }
-
-    const { eventData, eventKey } = event;
-
-    // Проверки
-    if (Date.now() / 1000 > eventData.registration_close) {
+    if (!eventData) {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: 'Registration is closed for this event.',
+          content: 'Event not found.',
           flags: 64
         }
       });
     }
 
+    // Добавляем участника с дополнительными данными
     const participants = eventData.participants || [];
-    if (participants.some(p => p.id === userId)) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: 'You are already registered for this event.',
-          flags: 64
-        }
-      });
-    }
-
-    if (participants.length >= eventData.max_participants) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: 'This event is full.',
-          flags: 64
-        }
-      });
-    }
-
-    // Добавляем участника
     participants.push({
       id: userId,
       username: username,
+      xbox_nickname: xboxNickname,
+      twitch_username: twitchUsername || null,
       registered_at: Date.now()
     });
 
@@ -132,9 +153,6 @@ export async function handleRegisterEvent(req, res) {
         components: [createEventButtons()]
       }
     });
-  } catch (error) {
-    console.error('Error handling registration:', error);
-    throw error;
   }
 }
 

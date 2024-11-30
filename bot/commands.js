@@ -47,11 +47,13 @@ async function cleanupCommands() {
         name: 'test',
         description: 'Basic command',
         type: 1,
+        default_member_permissions: "8"
       },
       {
         name: 'create_event',
         description: 'Create a new event announcement',
         type: 1,
+        default_member_permissions: "8",
         options: [
           {
             name: 'role',
@@ -78,5 +80,7 @@ async function cleanupCommands() {
     throw error;
   }
 }
+
+cleanupCommands().catch(console.error);
 
 export { cleanupCommands };
