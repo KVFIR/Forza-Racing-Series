@@ -89,7 +89,7 @@ function createRegistrationModal(customId) {
               min_length: 1,
               max_length: 50,
               required: false,
-              placeholder: "Enter your Twitch username (optional)"
+              placeholder: "Enter your Twitch username"
             }
           ]
         },
@@ -97,48 +97,14 @@ function createRegistrationModal(customId) {
           type: 1,
           components: [
             {
-              type: 3, // SELECT_MENU
+              type: 4, // TEXT_INPUT
               custom_id: "car_choice",
-              placeholder: "Select your car",
-              options: [
-                {
-                  label: "Ford Mustang Shelby GT350R",
-                  value: "mustang_gt350r",
-                  description: "2016",
-                  emoji: "🏎️"
-                },
-                {
-                  label: "Mercedes-AMG GT R",
-                  value: "amg_gtr",
-                  description: "2017",
-                  emoji: "🏎️"
-                },
-                {
-                  label: "Jaguar XKR-S GT",
-                  value: "jaguar_xkrs_gt",
-                  description: "2015",
-                  emoji: "🏎️"
-                },
-                {
-                  label: "Chevrolet Camaro Z/28",
-                  value: "camaro_z28",
-                  description: "2015",
-                  emoji: "🏎️"
-                },
-                {
-                  label: "Porsche Cayman GT4",
-                  value: "cayman_gt4",
-                  description: "2016",
-                  emoji: "🏎️"
-                },
-                {
-                  label: "Aston Martin Vantage GT12",
-                  value: "vantage_gt12",
-                  description: "2015",
-                  emoji: "🏎️"
-                }
-              ],
-              required: true
+              label: "Your Car",
+              style: 1, // SHORT style
+              min_length: 1,
+              max_length: 100,
+              required: true,
+              placeholder: "Enter your car choice"
             }
           ]
         }
@@ -166,6 +132,7 @@ export async function handleRegisterEvent(req, res) {
     const username = req.body.member.user.username;
     const xboxNickname = req.body.data.components[0].components[0].value;
     const twitchUsername = req.body.data.components[1].components[0].value;
+    const carChoice = req.body.data.components[2].components[0].value;
 
     // Получаем правильный messageId из custom_id модального окна
     const messageId = req.body.data.custom_id.replace('register_modal_', '');
@@ -207,6 +174,7 @@ export async function handleRegisterEvent(req, res) {
       username: username,
       xbox_nickname: xboxNickname,
       twitch_username: twitchUsername || null,
+      car_choice: carChoice,
       registered_at: Date.now()
     });
 
@@ -222,6 +190,7 @@ export async function handleRegisterEvent(req, res) {
 User: ${username} (<@${userId}>)
 Xbox: ${xboxNickname}
 Twitch: ${twitchUsername ? `[${twitchUsername}](https://www.twitch.tv/${twitchUsername})` : 'Not provided'}
+Car: ${carChoice}
 Event: ${eventData.title}`
     );
 
