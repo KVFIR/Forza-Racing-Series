@@ -9,8 +9,8 @@ import {
 import { getUser, createUser } from './database.js';
 import { db } from './firebase.js';
 import { ref, set, get } from 'firebase/database';
-import { createEventEmbed, createEventButtons } from './utils/embedBuilder.js';
 import { handleTest, handleCreateEvent, handleRegisterEvent, handleCancelRegistration } from './commands/index.js';
+import { handleLogging } from './commands/loggingCommand.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -90,6 +90,9 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         
         case 'create_event':
           return handleCreateEvent(req, res);
+        
+        case 'logging':
+          return handleLogging(req, res);
         
         default:
           console.error(`Unknown command: ${name}`);

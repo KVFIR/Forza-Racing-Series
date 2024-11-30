@@ -62,6 +62,21 @@ async function cleanupCommands() {
             required: true
           }
         ]
+      },
+      {
+        name: 'logging',
+        description: 'Set logging channel for registration events',
+        type: 1,
+        default_member_permissions: "8", // Только для админов
+        options: [
+          {
+            name: 'channel',
+            description: 'Text channel for logging',
+            type: 7, // CHANNEL type
+            required: true,
+            channel_types: [0] // 0 = GUILD_TEXT - только текстовые каналы
+          }
+        ]
       }
     ];
     

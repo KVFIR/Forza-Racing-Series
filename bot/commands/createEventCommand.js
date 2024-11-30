@@ -6,6 +6,7 @@ import {
 import { createEventEmbed, createEventButtons } from '../utils/embedBuilder.js';
 import { ref, set, get } from 'firebase/database';
 import { db } from '../firebase.js';
+import { sendLog } from './loggingCommand.js';
 
 // Создание события
 export async function handleCreateEvent(req, res) {
@@ -167,6 +168,14 @@ export async function handleRegisterEvent(req, res) {
     await updateEvent(eventKey, eventData, participants, messageId);
 
     // Отправляем обновленное сообщение
+    await sendLog(req.body.guild_id, 
+      `📝 **New Registration**
+User: ${username} (<@${userId}>)
+Xbox: ${xboxNickname}
+Twitch: ${twitchUsername || 'Not provided'}
+Event: ${eventData.title}`
+    );
+
     return res.send({
       type: InteractionResponseType.UPDATE_MESSAGE,
       data: {
@@ -246,6 +255,12 @@ export async function handleCancelRegistration(req, res) {
     await updateEvent(eventKey, eventData, updatedParticipants, messageId);
 
     // Отправляем обновленное сообщение
+    await sendLog(req.body.guild_id,
+      `❌ **Registration Cancelled**
+User: ${username} (<@${userId}>)
+Event: ${eventData.title}`
+    );
+
     return res.send({
       type: InteractionResponseType.UPDATE_MESSAGE,
       data: {
