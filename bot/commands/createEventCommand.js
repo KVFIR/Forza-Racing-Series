@@ -119,14 +119,70 @@ export async function handleRegisterEvent(req, res) {
   
   console.log('handleRegisterEvent called with type:', type);
 
-  // Если это первичное нажатие на кнопку - показываем модальное окно
+  // Если это первичное нажатие на кнопку - проверяем регистрацию
   if (type === InteractionType.MESSAGE_COMPONENT) {
-    console.log('Showing modal window');
-    const customId = req.body.message.id;
-    return res.send(createRegistrationModal(customId));
+    const userId = req.body.member.user.id;
+    const messageId = req.body.message.id;
+    
+    try {
+      // Получаем данные события
+      const eventRef = ref(db, `events`);
+      const snapshot = await get(eventRef);
+      
+      if (!snapshot.exists()) {
+        console.log('No events found in database');
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Event not found.',
+            flags: 64
+          }
+        });
+      }
+
+      // Ищем событие
+      const event = await findEvent(snapshot, messageId, req.body.channel_id);
+      if (!event) {
+        console.log('Event not found for message:', messageId);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Event not found.',
+            flags: 64
+          }
+        });
+      }
+
+      const { eventData } = event;
+      const participants = eventData.participants || [];
+
+      // Проверяем, не зарегистрирован ли уже пользователь
+      if (participants.some(p => p.id === userId)) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'You are already registered for this event.',
+            flags: 64
+          }
+        });
+      }
+
+      // Если не зарегистрирован - показываем модальное окно
+      console.log('Showing modal window');
+      return res.send(createRegistrationModal(messageId));
+    } catch (error) {
+      console.error('Error checking registration:', error);
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'An error occurred while processing your registration.',
+          flags: 64
+        }
+      });
+    }
   }
 
-  // Если это отправка формы - обрабатываем данные
+  // Остальной код обработки модального окна остается без изменений
   if (type === InteractionType.MODAL_SUBMIT) {
     const userId = req.body.member.user.id;
     const username = req.body.member.user.username;
