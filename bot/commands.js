@@ -8,41 +8,33 @@ async function cleanupCommands() {
   
   try {
     console.log('Starting command registration...');
-    console.log('APP_ID:', process.env.APP_ID); // Скроем часть ID для безопасности
     
-    // Получаем существующие команды
+    if (!process.env.APP_ID) {
+      throw new Error('APP_ID not found in environment variables');
+    }
+    
     console.log('Getting existing commands...');
     const existingCommands = await rest.get(
       Routes.applicationCommands(process.env.APP_ID)
-    );
-    console.log('Existing commands:', existingCommands.map(cmd => cmd.name));
+    ).catch(error => {
+      console.error('Error getting existing commands:', error);
+      throw error;
+    });
     
-    // Находим Entry Point команду и сохраняем все её свойства
+    console.log('Found existing commands:', existingCommands.map(cmd => cmd.name));
+    
+    // Находим Entry Point команду
     const entryPointCommand = existingCommands.find(cmd => cmd.name === 'launch');
+    console.log('Entry Point command found:', entryPointCommand ? 'yes' : 'no');
     
     if (!entryPointCommand) {
       console.error('Entry Point command not found!');
       return;
     }
 
-    // Сохраняем точную копию Entry Point команды
-    const entryPoint = {
-      id: entryPointCommand.id,
-      application_id: entryPointCommand.application_id,
-      name: entryPointCommand.name,
-      description: entryPointCommand.description,
-      version: entryPointCommand.version,
-      type: entryPointCommand.type,
-      options: entryPointCommand.options || [],
-      default_member_permissions: entryPointCommand.default_member_permissions,
-      dm_permission: entryPointCommand.dm_permission,
-      contexts: entryPointCommand.contexts,
-      integration_types: entryPointCommand.integration_types,
-    };
-    
     // Создаем новый список команд
     const commands = [
-      entryPoint, // Используем точную копию
+      entryPointCommand,
       {
         name: 'test',
         description: 'Basic command',
@@ -58,7 +50,7 @@ async function cleanupCommands() {
           {
             name: 'role',
             description: 'Role to assign to participants',
-            type: 8, // ROLE type
+            type: 8,
             required: true
           }
         ]
@@ -67,27 +59,59 @@ async function cleanupCommands() {
         name: 'logging',
         description: 'Set logging channel for registration events',
         type: 1,
-        default_member_permissions: "8", // Только для админов
+        default_member_permissions: "8",
         options: [
           {
             name: 'channel',
             description: 'Text channel for logging',
-            type: 7, // CHANNEL type
+            type: 7,
             required: true,
-            channel_types: [0] // 0 = GUILD_TEXT - только текстовые каналы
+            channel_types: [0]
+          }
+        ]
+      },
+      {
+        name: 'create_ticket_button',
+        description: 'Create a button for incident reporting',
+        type: 1,
+        default_member_permissions: "8"
+      },
+      {
+        name: 'setup_roles',
+        description: 'Set up Race Control and Participant roles',
+        type: 1,
+        default_member_permissions: "8",
+        options: [
+          {
+            name: 'race_control',
+            description: 'Role for Race Control members',
+            type: 8,
+            required: true
+          },
+          {
+            name: 'participant',
+            description: 'Role for Event Participants',
+            type: 8,
+            required: true
           }
         ]
       }
     ];
-    
-    console.log('Updating commands with Entry Point:', entryPoint);
-    
-    console.log('Updating commands...');
-    await rest.put(
+
+    console.log('Preparing to update commands...');
+    console.log('Total commands to register:', commands.length);
+
+    // Добавляем таймаут
+    const updateProm = rest.put(
       Routes.applicationCommands(process.env.APP_ID),
       { body: commands }
-    );
-    
+    ).catch(error => {
+      console.error('Error updating commands:', error);
+      throw error;
+    });
+
+    await updateProm;
+
     console.log('Successfully updated application commands!');
     
   } catch (error) {

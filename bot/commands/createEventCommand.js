@@ -69,12 +69,12 @@ function createRegistrationModal(customId) {
             {
               type: 4, // TEXT_INPUT
               custom_id: "xbox_nickname",
-              label: "XBOX Nickname",
+              label: "XBOX Gamertag",
               style: 1, // SHORT style
               min_length: 1,
               max_length: 50,
               required: true,
-              placeholder: "Enter your XBOX nickname"
+              placeholder: "Enter your XBOX gamertag"
             }
           ]
         },

@@ -11,6 +11,8 @@ import { db } from './firebase.js';
 import { ref, set, get } from 'firebase/database';
 import { handleTest, handleCreateEvent, handleRegisterEvent, handleCancelRegistration } from './commands/index.js';
 import { handleLogging } from './commands/loggingCommand.js';
+import { handleCreateTicketButton, handleShowTicketModal, handleTicketSubmit, handleCloseTicket } from './commands/ticketCommand.js';
+import { handleSetupRoles } from './commands/setupRolesCommand.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -94,6 +96,12 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         case 'logging':
           return handleLogging(req, res);
         
+        case 'create_ticket_button':
+          return handleCreateTicketButton(req, res);
+        
+        case 'setup_roles':
+          return handleSetupRoles(req, res);
+        
         default:
           console.error(`Unknown command: ${name}`);
           return res.status(400).json({ error: 'Unknown command' });
@@ -130,6 +138,18 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       if (custom_id === 'cancel_registration') {
         console.log('Cancel registration button clicked');
         return handleCancelRegistration(req, res);
+      }
+
+      if (custom_id === 'create_incident_ticket') {
+        return handleShowTicketModal(req, res);
+      }
+
+      if (custom_id.startsWith('ticket_modal_')) {
+        return handleTicketSubmit(req, res);
+      }
+
+      if (custom_id.startsWith('close_ticket_')) {
+        return handleCloseTicket(req, res);
       }
 
       console.error(`Unknown component: ${custom_id}`);
