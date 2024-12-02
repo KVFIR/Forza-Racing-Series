@@ -4,6 +4,7 @@ import {
 } from 'discord-interactions';
 import { ref, set, get } from 'firebase/database';
 import { db } from '../firebase.js';
+import { sendLog } from './loggingCommand.js';
 
 // Создание кнопки для репорта инцидентов
 export async function handleCreateTicketButton(req, res) {
@@ -241,6 +242,11 @@ export async function handleTicketSubmit(req, res) {
       created_at: Date.now()
     });
 
+    await sendLog(guild_id, `🎫 **New Ticket Created**
+• Ticket: #${ticketNumber}
+• Reporter: <@${member.user.id}>
+• Thread: <#${thread.id}>`);
+
   } catch (error) {
     console.error('Error in handleTicketSubmit:', error);
   }
@@ -312,6 +318,11 @@ export async function handleCloseTicket(req, res) {
       },
       closed_at: Date.now()
     });
+
+    await sendLog(guild_id, `🔒 **Ticket Closed**
+• Ticket: #${ticketNumber}
+• Closed by: <@${member.user.id}>
+• Reporter: <@${ticket.reporter.id}>`);
 
     // Отправляем подтверждение
     return res.send({
