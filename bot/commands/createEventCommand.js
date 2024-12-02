@@ -243,11 +243,11 @@ export async function handleRegisterEvent(req, res) {
     // Отправляем обновленное сообщение
     await sendLog(req.body.guild_id, 
       `📝 **New Registration**
-User: ${username} (<@${userId}>)
-Xbox: ${xboxNickname}
-Twitch: ${twitchUsername ? `[${twitchUsername}](https://www.twitch.tv/${twitchUsername})` : 'Not provided'}
-Car: ${carChoice}
-Event: ${eventData.title}`
+• User: ${username} (<@${userId}>)
+• Xbox: ${xboxNickname}
+• Twitch: ${twitchUsername ? `[${twitchUsername}](https://www.twitch.tv/${twitchUsername})` : 'Not provided'}
+• Car: ${carChoice}
+• Event: ${eventData.title}`
     );
 
     return res.send({
@@ -332,8 +332,8 @@ export async function handleCancelRegistration(req, res) {
     // Отправляем обновленное сообщение
     await sendLog(req.body.guild_id,
       `❌ **Registration Cancelled**
-User: ${username} (<@${userId}>)
-Event: ${eventData.title}`
+• User: ${username} (<@${userId}>)
+• Event: ${eventData.title}`
     );
 
     return res.send({

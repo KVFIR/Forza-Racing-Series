@@ -46,14 +46,7 @@ async function cleanupCommands() {
         description: 'Create a new event announcement',
         type: 1,
         default_member_permissions: "8",
-        options: [
-          {
-            name: 'role',
-            description: 'Role to assign to participants',
-            type: 8,
-            required: true
-          }
-        ]
+        dm_permission: false
       },
       {
         name: 'logging',
