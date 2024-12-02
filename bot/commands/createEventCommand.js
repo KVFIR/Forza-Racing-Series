@@ -13,30 +13,25 @@ export async function handleCreateEvent(req, res) {
   const { guild_id } = req.body;
 
   try {
-    // Создаем новую роль для события
-    const roleResponse = await fetch(`https://discord.com/api/v10/guilds/${guild_id}/roles`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: `Event ${new Date().toLocaleDateString()}`,
-        color: Math.floor(Math.random() * 16777215),
-        mentionable: true
-      })
-    });
+    // Проверяем, настроена ли роль участника
+    const rolesRef = ref(db, `guild_roles/${guild_id}`);
+    const rolesSnapshot = await get(rolesRef);
+    const participantRoleId = rolesSnapshot.val()?.participant_role;
 
-    if (!roleResponse.ok) {
-      throw new Error('Failed to create event role');
+    if (!participantRoleId) {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "⚠️ Please set up participant role first using `/setup_roles` command!",
+          flags: 64
+        }
+      });
     }
-
-    const role = await roleResponse.json();
 
     const eventData = {
       title: 'HEAVY is the CROWN',
       max_participants: 48,
-      role_id: role.id // Используем ID новой роли
+      role_id: participantRoleId
     };
 
     const eventKey = Date.now();
