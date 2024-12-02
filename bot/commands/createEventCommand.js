@@ -10,26 +10,35 @@ import { sendLog } from './loggingCommand.js';
 
 // Создание события
 export async function handleCreateEvent(req, res) {
-  const { data } = req.body;
-  
-  if (!data.options) {
-    throw new Error('No options provided for create_event command');
-  }
-
-  const roleId = data.options.find(opt => opt.name === 'role')?.value;
-  console.log('Creating event with role:', roleId);
-  
-  if (!roleId) {
-    throw new Error('Role ID is required');
-  }
-
-  const eventData = {
-    title: 'HEAVY is the CROWN',
-    max_participants: 48,
-    role_id: roleId
-  };
+  const { guild_id } = req.body;
 
   try {
+    // Создаем новую роль для события
+    const roleResponse = await fetch(`https://discord.com/api/v10/guilds/${guild_id}/roles`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: `Event ${new Date().toLocaleDateString()}`,
+        color: Math.floor(Math.random() * 16777215),
+        mentionable: true
+      })
+    });
+
+    if (!roleResponse.ok) {
+      throw new Error('Failed to create event role');
+    }
+
+    const role = await roleResponse.json();
+
+    const eventData = {
+      title: 'HEAVY is the CROWN',
+      max_participants: 48,
+      role_id: role.id // Используем ID новой роли
+    };
+
     const eventKey = Date.now();
     const eventRef = ref(db, `events/${eventKey}`);
 
@@ -51,7 +60,13 @@ export async function handleCreateEvent(req, res) {
     });
   } catch (error) {
     console.error('Error creating event:', error);
-    throw error;
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "Failed to create event. Error: " + error.message,
+        flags: 64
+      }
+    });
   }
 }
 

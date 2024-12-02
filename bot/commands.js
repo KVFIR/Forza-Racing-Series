@@ -39,7 +39,8 @@ async function cleanupCommands() {
         name: 'test',
         description: 'Basic command',
         type: 1,
-        default_member_permissions: "8"
+        default_member_permissions: "8",
+        dm_permission: false
       },
       {
         name: 'create_event',
@@ -50,13 +51,14 @@ async function cleanupCommands() {
       },
       {
         name: 'logging',
-        description: 'Set logging channel for registration events',
+        description: 'Set up logging channel',
         type: 1,
         default_member_permissions: "8",
+        dm_permission: false,
         options: [
           {
             name: 'channel',
-            description: 'Text channel for logging',
+            description: 'Channel for logs',
             type: 7,
             required: true,
             channel_types: [0]
@@ -67,13 +69,15 @@ async function cleanupCommands() {
         name: 'create_ticket_button',
         description: 'Create a button for incident reporting',
         type: 1,
-        default_member_permissions: "8"
+        default_member_permissions: "8",
+        dm_permission: false
       },
       {
         name: 'setup_roles',
         description: 'Set up Race Control and Participant roles',
         type: 1,
         default_member_permissions: "8",
+        dm_permission: false,
         options: [
           {
             name: 'race_control',
