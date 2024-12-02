@@ -28,7 +28,8 @@ export async function handleCreateTicketButton(req, res) {
               }
             ]
           }
-        ]
+        ],
+        flags: 0 // Явно указываем, что сообщение должно быть публичным
       }
     });
   } catch (error) {
@@ -37,7 +38,7 @@ export async function handleCreateTicketButton(req, res) {
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
         content: "Failed to create incident report button. Error: " + error.message,
-        flags: 64
+        flags: 64 // Ошибки оставляем эфемерными
       }
     });
   }
@@ -278,7 +279,7 @@ export async function handleCloseTicket(req, res) {
       });
     }
 
-    // Получаем информацию о тикете
+    // Получ��ем информацию о тикете
     const ticketRef = ref(db, `tickets/${guild_id}/${ticketNumber}`);
     const ticketSnapshot = await get(ticketRef);
     const ticket = ticketSnapshot.val();
