@@ -197,46 +197,7 @@ export async function handleTicketSubmit(req, res) {
   } = req.body;
 
   try {
-    // Проверяем права бота в канале
-    const channelResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}`, {
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
-
-    if (!channelResponse.ok) {
-      console.error('Channel check failed:', await channelResponse.text());
-      throw new Error('Failed to check channel permissions');
-    }
-
-    const channel = await channelResponse.json();
-    const botPermissions = channel.permission_overwrites?.find(
-      p => p.id === process.env.CLIENT_ID
-    )?.allow || '0';
-
-    const missingPermissions = requiredPermissions.filter(
-      perm => !(BigInt(botPermissions) & BigInt(1 << permissionFlags[perm]))
-    );
-
-    if (missingPermissions.length > 0) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `⚠️ **Bot Missing Permissions**
-The bot needs the following permissions to create tickets:
-${missingPermissions.map(p => `• ${p}`).join('\n')}
-
-Please contact server administrators to fix this.`,
-          flags: 64
-        }
-      });
-    }
-
-    // Получаем данные из формы
-    const involvedUsers = components[0].components[0].value;
-    const ticketNumber = await ticketService.getNextTicketNumber(guild_id);
-
-    // Создаем тред...
+    // Создаем тред без предварительной проверки прав
     const threadResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}/threads`, {
       method: 'POST',
       headers: {
@@ -250,6 +211,26 @@ Please contact server administrators to fix this.`,
         rate_limit_per_user: 0
       })
     });
+
+    // Если получаем 403, значит действительно нет прав
+    if (threadResponse.status === 403) {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `⚠️ **Bot Needs Additional Permissions**
+Please reinvite the bot using this link:
+https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID}&permissions=534723950656&scope=bot%20applications.commands
+
+Required permissions:
+• Create Private Threads
+• Send Messages in Threads
+• Manage Threads
+• View Channels
+• Send Messages`,
+          flags: 64
+        }
+      });
+    }
 
     if (!threadResponse.ok) {
       console.error('Failed to create thread:', await threadResponse.text());
@@ -508,7 +489,7 @@ export async function handleVerdictSubmit(req, res) {
       })
     });
 
-    // Обновляем тикет
+    // Обновляем тик��т
     await ticketService.updateTicket(guild_id, ticketId, {
       ...ticket,
       verdict: {
