@@ -253,17 +253,34 @@ Required permissions:
 
     // Добавляем роль Race Control в тред
     if (raceControlRoleId) {
-      await fetch(`https://discord.com/api/v10/channels/${thread.id}/thread-members`, {
+      await fetch(`https://discord.com/api/v10/channels/${thread.id}/thread-members/${raceControlRoleId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: raceControlRoleId,
-          member_count: 100 // Максимальное количество участников с этой ролью
-        })
+        }
       });
+
+      // Добавляем всех участников с ролью Race Control в тред
+      const guildMembersResponse = await fetch(`https://discord.com/api/v10/guilds/${guild_id}/members?limit=1000`, {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+        }
+      });
+      
+      const members = await guildMembersResponse.json();
+      
+      // Добавляем каждого участника с ролью Race Control
+      for (const member of members) {
+        if (member.roles.includes(raceControlRoleId)) {
+          await fetch(`https://discord.com/api/v10/channels/${thread.id}/thread-members/${member.user.id}`, {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+            }
+          });
+        }
+      }
     }
 
     // Создаем объект тикета с полными данными
