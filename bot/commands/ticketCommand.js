@@ -373,7 +373,7 @@ export async function handleCloseTicket(req, res) {
         }
       }),
 
-      // Архивируем ветку
+      // Архивируем и закрываем тред
       fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}`, {
         method: 'PATCH',
         headers: {
@@ -382,7 +382,8 @@ export async function handleCloseTicket(req, res) {
         },
         body: JSON.stringify({
           archived: true,
-          locked: true
+          locked: true,
+          closed: true // Добавляем закрытие треда
         })
       })
     ]);
