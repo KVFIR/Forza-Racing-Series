@@ -322,16 +322,7 @@ export async function handleCloseTicket(req, res) {
   } = req.body;
   
   try {
-    const ticketId = custom_id.replace('close_ticket_', '');
-    
-    // Получаем актуальную версию тикета
-    let ticket = await ticketService.getTicket(guild_id, ticketId);
-    
-    if (!ticket) {
-      throw new Error('Ticket not found');
-    }
-
-    // Проверяем права на закрытие тикета
+    // Проверяем права
     const rolesSnapshot = await get(ref(db, `guild_roles/${guild_id}`));
     const raceControlRoleId = rolesSnapshot.val()?.race_control_role;
 
@@ -348,26 +339,53 @@ export async function handleCloseTicket(req, res) {
       });
     }
 
-    // Удаляем создателя тикета из ветки
-    await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/thread-members/${ticket.author.id}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+    const ticketId = custom_id.replace('close_ticket_', '');
+    
+    // Получаем актуальную версию тикета
+    let ticket = await ticketService.getTicket(guild_id, ticketId);
+    
+    if (!ticket) {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ Ticket not found!",
+          flags: 64
+        }
+      });
+    }
+
+    // Отправляем единственный ответ на интеракцию
+    res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "🔒 Ticket closed successfully",
+        flags: 64
       }
     });
 
-    // Архивируем ветку
-    await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        archived: true,
-        locked: true
+    // Выполняем остальные операции после отправки ответа
+    await Promise.all([
+      // Удаляем создателя тикета из ветки
+      fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/thread-members/${ticket.author.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+        }
+      }),
+
+      // Архивируем ветку
+      fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          archived: true,
+          locked: true
+        })
       })
-    });
+    ]);
 
     // Обновляем статус тикета
     await ticketService.updateTicket(guild_id, ticketId, {
@@ -380,33 +398,32 @@ export async function handleCloseTicket(req, res) {
       closed_at: Date.now()
     });
 
+    // Отправляем сообщение о закрытии в тред
+    await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: `🔒 **Ticket Closed**
+> Closed by: <@${member.user.id}>
+> Ticket: #${ticket.number}`
+      })
+    });
+
     // Получаем свежую версию тикета после обновления
     ticket = await ticketService.getTicket(guild_id, ticketId);
 
-    // Логируем закрытие тикета с актуальными данными
+    // Логируем закрытие тикета
     await logService.logTicketClosed(guild_id, ticket, {
       id: member.user.id,
       username: member.user.username
     });
 
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: `✅ Ticket #${ticket.number} has been closed.`,
-        flags: 64
-      }
-    });
-
   } catch (error) {
     console.error('Error closing ticket:', error);
     await logService.logError(guild_id, 'handleCloseTicket', error);
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: "Failed to close ticket. Please try again.",
-        flags: 64
-      }
-    });
   }
 }
 
