@@ -199,6 +199,12 @@ export async function handleTicketSubmit(req, res) {
   try {
     // Получаем данные из формы
     const involvedUsers = components[0].components[0].value;
+    const videoLink = components[1].components[0].value;
+    const comment = components[2].components[0].value;
+    
+    // Получаем ID роли Race Control
+    const rolesSnapshot = await get(ref(db, `guild_roles/${guild_id}`));
+    const raceControlRoleId = rolesSnapshot.val()?.race_control_role;
     
     // Получаем следующий номер тикета
     const ticketNumber = await ticketService.getNextTicketNumber(guild_id);
@@ -245,7 +251,7 @@ Required permissions:
 
     const thread = await threadResponse.json();
 
-    // Создаем объект тикета
+    // Создаем объект тикета с полными данными
     const ticketData = {
       number: ticketNumber,
       author: {
@@ -253,6 +259,8 @@ Required permissions:
         username
       },
       involved_users: involvedUsers,
+      video_link: videoLink,
+      comment: comment,
       thread_id: thread.id,
       created_at: Date.now(),
       status: 'open'
@@ -261,7 +269,8 @@ Required permissions:
     // Создаем тикет в базе данных
     const { ticketId } = await ticketService.createTicket(guild_id, ticketData);
 
-    // Отправляем первое сообщение в тред
+    // Формируем первое сообщение
+    const raceControlMention = raceControlRoleId ? `<@&${raceControlRoleId}> ` : '';
     await fetch(`https://discord.com/api/v10/channels/${thread.id}/messages`, {
       method: 'POST',
       headers: {
@@ -269,10 +278,12 @@ Required permissions:
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        content: `🎫 **New Incident Report** (#${ticketNumber})
+        content: `${raceControlMention}🎫 **New Incident Report** (#${ticketNumber})
 > Reporter: <@${userId}>
-> Involved Users: ${involvedUsers}`,
-        components: [createTicketButtons(ticketId)] // Добавляем кнопки
+> Involved Users: ${involvedUsers}
+> Video Evidence: ${videoLink}
+${comment ? `> Additional Comments: ${comment}` : ''}`,
+        components: [createTicketButtons(ticketId)]
       })
     });
 
