@@ -187,6 +187,40 @@ export async function handleTicketSubmit(req, res) {
   } = req.body;
 
   try {
+    // Проверяем права бота в канале
+    const channelResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}`, {
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+      }
+    });
+
+    if (!channelResponse.ok) {
+      throw new Error('Failed to check channel permissions');
+    }
+
+    const channel = await channelResponse.json();
+    const botPermissions = channel.permission_overwrites?.find(
+      p => p.id === process.env.CLIENT_ID
+    )?.allow || '0';
+
+    const missingPermissions = requiredPermissions.filter(
+      perm => !(BigInt(botPermissions) & BigInt(1 << permissionFlags[perm]))
+    );
+
+    if (missingPermissions.length > 0) {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `⚠️ **Bot Missing Permissions**
+The bot needs the following permissions to create tickets:
+${missingPermissions.map(p => `• ${p}`).join('\n')}
+
+Please contact server administrators to fix this.`,
+          flags: 64
+        }
+      });
+    }
+
     const involvedUsers = components[0].components[0].value;
     const ticketNumber = await ticketService.getNextTicketNumber(guild_id);
 
