@@ -7,12 +7,22 @@ import { db } from '../firebase.js';
 import { logService } from '../services/logService.js';
 import { ticketService } from '../services/ticketService.js';
 
+// В начале файла добавим объект с битовыми флагами прав
+const permissionFlags = {
+  CREATE_PRIVATE_THREADS: 34,      // 1 << 34
+  SEND_MESSAGES_IN_THREADS: 35,    // 1 << 35
+  MANAGE_THREADS: 36,              // 1 << 36
+  VIEW_CHANNEL: 10,                // 1 << 10
+  SEND_MESSAGES: 11                // 1 << 11 (добавим для надежности)
+};
+
 // В начале файла добавим проверку прав
 const requiredPermissions = [
   'CREATE_PRIVATE_THREADS',
   'SEND_MESSAGES_IN_THREADS',
   'MANAGE_THREADS',
-  'VIEW_CHANNEL'
+  'VIEW_CHANNEL',
+  'SEND_MESSAGES'
 ];
 
 // В начале файла добавим проверку
@@ -183,28 +193,14 @@ export async function handleTicketSubmit(req, res) {
     guild_id,
     channel_id,
     member: { user: { id: userId, username } },
-    data: { components }
+    data: { components },
+    app_permissions
   } = req.body;
 
   try {
-    // Проверяем права бота в канале
-    const channelResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}`, {
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
-
-    if (!channelResponse.ok) {
-      throw new Error('Failed to check channel permissions');
-    }
-
-    const channel = await channelResponse.json();
-    const botPermissions = channel.permission_overwrites?.find(
-      p => p.id === process.env.CLIENT_ID
-    )?.allow || '0';
-
+    // Проверяем права бота используя app_permissions
     const missingPermissions = requiredPermissions.filter(
-      perm => !(BigInt(botPermissions) & BigInt(1 << permissionFlags[perm]))
+      perm => !(BigInt(app_permissions) & BigInt(1 << permissionFlags[perm]))
     );
 
     if (missingPermissions.length > 0) {
@@ -221,6 +217,7 @@ Please contact server administrators to fix this.`,
       });
     }
 
+    // Получаем данные из формы
     const involvedUsers = components[0].components[0].value;
     const ticketNumber = await ticketService.getNextTicketNumber(guild_id);
 
