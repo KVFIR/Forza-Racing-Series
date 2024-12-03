@@ -193,14 +193,29 @@ export async function handleTicketSubmit(req, res) {
     guild_id,
     channel_id,
     member: { user: { id: userId, username } },
-    data: { components },
-    app_permissions
+    data: { components }
   } = req.body;
 
   try {
-    // Проверяем права бота используя app_permissions
+    // Проверяем права бота в канале
+    const channelResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}`, {
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+      }
+    });
+
+    if (!channelResponse.ok) {
+      console.error('Channel check failed:', await channelResponse.text());
+      throw new Error('Failed to check channel permissions');
+    }
+
+    const channel = await channelResponse.json();
+    const botPermissions = channel.permission_overwrites?.find(
+      p => p.id === process.env.CLIENT_ID
+    )?.allow || '0';
+
     const missingPermissions = requiredPermissions.filter(
-      perm => !(BigInt(app_permissions) & BigInt(1 << permissionFlags[perm]))
+      perm => !(BigInt(botPermissions) & BigInt(1 << permissionFlags[perm]))
     );
 
     if (missingPermissions.length > 0) {
