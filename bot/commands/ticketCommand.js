@@ -1,5 +1,4 @@
 import { 
-  InteractionType, 
   InteractionResponseType
 } from 'discord-interactions';
 import { ref, set, get } from 'firebase/database';
@@ -7,40 +6,48 @@ import { db } from '../firebase.js';
 import { logService } from '../services/logService.js';
 import { ticketService } from '../services/ticketService.js';
 
-// В начале файла добавим объект с битовыми флагами прав
+// Добавляем в начало файла
 const permissionFlags = {
-  CREATE_PRIVATE_THREADS: 34,      // 1 << 34
-  SEND_MESSAGES_IN_THREADS: 35,    // 1 << 35
-  MANAGE_THREADS: 36,              // 1 << 36
-  VIEW_CHANNEL: 10,                // 1 << 10
-  SEND_MESSAGES: 11                // 1 << 11 (добавим для надежности)
+  SEND_MESSAGES: 1 << 11,
+  CREATE_PUBLIC_THREADS: 1 << 15,
+  SEND_MESSAGES_IN_THREADS: 1 << 18,
+  VIEW_CHANNEL: 1 << 10,
+  MANAGE_THREADS: 1 << 17
 };
-
-// В начале файла добавим проверку прав
-const requiredPermissions = [
-  'CREATE_PRIVATE_THREADS',
-  'SEND_MESSAGES_IN_THREADS',
-  'MANAGE_THREADS',
-  'VIEW_CHANNEL',
-  'SEND_MESSAGES'
-];
-
-// В начале файла добавим проверку
-async function getTicketsChannel(guildId) {
-  const settingsRef = ref(db, `guild_settings/${guildId}`);
-  const snapshot = await get(settingsRef);
-  const ticketsChannelId = snapshot.val()?.tickets_channel;
-
-  if (!ticketsChannelId) {
-    throw new Error('Tickets channel not configured');
-  }
-
-  return ticketsChannelId;
-}
 
 // Создание кнопки для репорта инцидентов
 export async function handleCreateTicketButton(req, res) {
+  const { channel_id, app_permissions } = req.body;
+
   try {
+    // Используем permissions из interaction
+    if (!app_permissions) {
+      throw new Error('Bot permissions not available');
+    }
+
+    const botPermissions = BigInt(app_permissions);
+
+    // Проверяем, есть ли у бота необходимые права
+    const requiredPermissions = ['VIEW_CHANNEL', 'SEND_MESSAGES', 'CREATE_PUBLIC_THREADS', 'SEND_MESSAGES_IN_THREADS', 'MANAGE_THREADS'];
+    const missingPermissions = requiredPermissions.filter(permission => 
+      !(botPermissions & BigInt(permissionFlags[permission]))
+    );
+
+    if (missingPermissions.length > 0) {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `⚠️ **Bot Needs Channel Permissions**
+The bot is missing the following permissions:
+${missingPermissions.map(p => `• ${p}`).join('\n')}
+
+Please give the bot access to this channel with these permissions.`,
+          flags: 64
+        }
+      });
+    }
+
+    // Создаем кнопку
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
@@ -61,7 +68,7 @@ export async function handleCreateTicketButton(req, res) {
             ]
           }
         ],
-        flags: 0 // Явно указываем, что сообщение должно быт публичным
+        flags: 0
       }
     });
   } catch (error) {
@@ -69,8 +76,8 @@ export async function handleCreateTicketButton(req, res) {
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: "Failed to create incident report button. Error: " + error.message,
-        flags: 64 // Ошибки оставляем эфемерными
+        content: "Failed to create incident report button. Please make sure the bot has the required permissions.",
+        flags: 64
       }
     });
   }
@@ -197,6 +204,15 @@ export async function handleTicketSubmit(req, res) {
   } = req.body;
 
   try {
+    // Сразу отправляем ответ пользователю
+    res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "✅ Your incident report has been created.",
+        flags: 64
+      }
+    });
+
     // Получаем данные из формы
     const involvedUsers = components[0].components[0].value;
     const videoLink = components[1].components[0].value;
@@ -210,7 +226,7 @@ export async function handleTicketSubmit(req, res) {
     const ticketNumber = await ticketService.getNextTicketNumber(guild_id);
 
     // Создаем тред
-    const threadResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}/threads`, {
+    const createThreadResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}/threads`, {
       method: 'POST',
       headers: {
         Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
@@ -224,62 +240,57 @@ export async function handleTicketSubmit(req, res) {
       })
     });
 
-    // Если получаем 403, значит действительно нет прав
-    if (threadResponse.status === 403) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `⚠️ **Bot Needs Additional Permissions**
-Please reinvite the bot using this link:
-https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID}&permissions=534723950656&scope=bot%20applications.commands
-
-Required permissions:
-• Create Private Threads
-• Send Messages in Threads
-• Manage Threads
-• View Channels
-• Send Messages`,
-          flags: 64
-        }
-      });
+    if (!createThreadResponse.ok) {
+      throw new Error(`Failed to create thread: ${createThreadResponse.status}`);
     }
 
-    if (!threadResponse.ok) {
-      console.error('Failed to create thread:', await threadResponse.text());
-      throw new Error(`Failed to create thread: ${threadResponse.status}`);
-    }
-
-    const thread = await threadResponse.json();
+    const newThread = await createThreadResponse.json();
 
     // Добавляем роль Race Control в тред
     if (raceControlRoleId) {
-      await fetch(`https://discord.com/api/v10/channels/${thread.id}/thread-members/${raceControlRoleId}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      try {
+        // Добавляем саму роль в тред
+        await fetch(`https://discord.com/api/v10/channels/${newThread.id}/thread-members/${raceControlRoleId}`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        });
 
-      // Добавляем всех участников с ролью Race Control в тред
-      const guildMembersResponse = await fetch(`https://discord.com/api/v10/guilds/${guild_id}/members?limit=1000`, {
-        headers: {
-          Authorization: `Bot ${process.env.DISCORD_TOKEN}`
-        }
-      });
-      
-      const members = await guildMembersResponse.json();
-      
-      // Добавляем каждого участника с ролью Race Control
-      for (const member of members) {
-        if (member.roles.includes(raceControlRoleId)) {
-          await fetch(`https://discord.com/api/v10/channels/${thread.id}/thread-members/${member.user.id}`, {
-            method: 'PUT',
-            headers: {
-              Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+        // Получаем список всех участников сервера
+        const guildMembersResponse = await fetch(`https://discord.com/api/v10/guilds/${guild_id}/members?limit=1000`, {
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+          }
+        });
+        
+        if (!guildMembersResponse.ok) {
+          console.error('Failed to fetch guild members:', await guildMembersResponse.text());
+          // Продолжаем выполнение, так как тикет уже создан
+        } else {
+          const members = await guildMembersResponse.json();
+          
+          // Добавляем каждого участника с ролью Race Control
+          for (const member of members) {
+            if (member.roles?.includes(raceControlRoleId)) {
+              try {
+                await fetch(`https://discord.com/api/v10/channels/${newThread.id}/thread-members/${member.user.id}`, {
+                  method: 'PUT',
+                  headers: {
+                    Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+                  }
+                });
+              } catch (memberError) {
+                console.error('Failed to add member to thread:', member.user.id, memberError);
+                // Продолжаем с следующим участником
+              }
             }
-          });
+          }
         }
+      } catch (roleError) {
+        console.error('Error adding Race Control role members:', roleError);
+        // Продолжаем выполнение, так как основной функционал работает
       }
     }
 
@@ -293,7 +304,7 @@ Required permissions:
       involved_users: involvedUsers,
       video_link: videoLink,
       comment: comment,
-      thread_id: thread.id,
+      thread_id: newThread.id,
       created_at: Date.now(),
       status: 'open'
     };
@@ -302,15 +313,14 @@ Required permissions:
     const { ticketId } = await ticketService.createTicket(guild_id, ticketData);
 
     // Формируем первое сообщение
-    const raceControlMention = raceControlRoleId ? `<@&${raceControlRoleId}> ` : '';
-    await fetch(`https://discord.com/api/v10/channels/${thread.id}/messages`, {
+    await fetch(`https://discord.com/api/v10/channels/${newThread.id}/messages`, {
       method: 'POST',
       headers: {
         Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        content: `🎫 **New Incident Report** (#${ticketNumber}) ${raceControlMention}
+        content: `🎫 **New Incident Report** (#${ticketNumber})
 > Reporter: <@${userId}>
 > Involved Users: ${involvedUsers}
 > Video Evidence: ${videoLink}
@@ -322,26 +332,21 @@ ${comment ? `> Additional Comments: ${comment}` : ''}`,
     // Логируем создание тикета с полными данными
     await logService.logTicketCreated(guild_id, ticketData);
 
-    // Отправляем успешный ответ
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: `✅ **Incident Report Created**
-> Please check the <#${thread.id}> for further communication.`,
-        flags: 64
-      }
-    });
-
   } catch (error) {
     console.error('Error in handleTicketSubmit:', error);
     await logService.logError(guild_id, 'handleTicketSubmit', error);
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
+    
+    // Отправляем сообщение об ошибке через webhook
+    await fetch(`https://discord.com/api/v10/webhooks/${process.env.CLIENT_ID}/${req.body.token}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         content: "Failed to create ticket. Please try again.",
         flags: 64
-      }
-    });
+      })
+    }).catch(console.error);
   }
 }
 
