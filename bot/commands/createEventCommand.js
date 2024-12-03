@@ -1,16 +1,17 @@
 import { 
   InteractionType,
-  InteractionResponseType,
-  MessageComponentTypes 
+  InteractionResponseType
 } from 'discord-interactions';
-import { createEventEmbed, createEventButtons } from '../utils/embedBuilder.js';
-import { ref, set, get } from 'firebase/database';
+import { ref, get } from 'firebase/database';
 import { db } from '../firebase.js';
-import { sendLog } from './loggingCommand.js';
+import { createEventEmbed, createEventButtons } from '../utils/embedBuilder.js';
+import { eventService } from '../services/eventService.js';
+import { logService } from '../services/logService.js';
+import { roleService } from '../services/roleService.js';
 
 // Создание события
 export async function handleCreateEvent(req, res) {
-  const { guild_id } = req.body;
+  const { guild_id, channel_id, id } = req.body;
 
   try {
     // Проверяем, настроена ли роль участника
@@ -22,8 +23,15 @@ export async function handleCreateEvent(req, res) {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: "⚠️ Please set up participant role first using `/setup_roles` command!",
-          flags: 64
+          content: `⚠️ Participant role is not set up!
+
+Please follow these steps:
+1. Use \`/setup_roles\` command
+2. Select a role for participants using the \`participant\` option
+3. Try creating the event again
+
+Need help? Contact server administrators.`,
+          flags: 64 // Эфемерное сообщение
         }
       });
     }
@@ -34,17 +42,7 @@ export async function handleCreateEvent(req, res) {
       role_id: participantRoleId
     };
 
-    const eventKey = Date.now();
-    const eventRef = ref(db, `events/${eventKey}`);
-
-    await set(eventRef, {
-      ...eventData,
-      created_at: Date.now(),
-      participants: [],
-      channel_id: req.body.channel_id,
-      interaction_id: req.body.id,
-      message_ids: []
-    });
+    const { eventKey } = await eventService.createEvent(guild_id, channel_id, id, eventData);
 
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -54,33 +52,29 @@ export async function handleCreateEvent(req, res) {
       }
     });
   } catch (error) {
-    console.error('Error creating event:', error);
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: "Failed to create event. Error: " + error.message,
-        flags: 64
-      }
-    });
+    await logService.logError(guild_id, 'handleCreateEvent', error);
+    return res.send(createErrorResponse(
+      "Failed to create event. Please try again later or contact administrators."
+    ));
   }
 }
 
 // Функция создания модального окна для регистрации
 function createRegistrationModal(customId) {
   return {
-    type: 9, // MODAL type
+    type: 9,
     data: {
       title: "Event Registration",
       custom_id: `register_modal_${customId}`,
       components: [
         {
-          type: 1, // ACTION_ROW
+          type: 1,
           components: [
             {
-              type: 4, // TEXT_INPUT
+              type: 4,
               custom_id: "xbox_nickname",
               label: "XBOX Gamertag",
-              style: 1, // SHORT style
+              style: 1,
               min_length: 1,
               max_length: 50,
               required: true,
@@ -107,10 +101,10 @@ function createRegistrationModal(customId) {
           type: 1,
           components: [
             {
-              type: 4, // TEXT_INPUT
+              type: 4,
               custom_id: "car_choice",
               label: "Your Car",
-              style: 1, // SHORT style
+              style: 1,
               min_length: 1,
               max_length: 100,
               required: true,
@@ -123,308 +117,226 @@ function createRegistrationModal(customId) {
   };
 }
 
-// Обновляем обработчик регистрации
-export async function handleRegisterEvent(req, res) {
-  const { type } = req.body;
-  
-  console.log('handleRegisterEvent called with type:', type);
+// Вспомогательные функции
+async function checkParticipantRole(guildId) {
+  const rolesRef = ref(db, `guild_roles/${guildId}`);
+  const rolesSnapshot = await get(rolesRef);
+  const participantRoleId = rolesSnapshot.val()?.participant_role;
 
-  // Если это первичное нажатие на кнопку - проверяем регистрацию
-  if (type === InteractionType.MESSAGE_COMPONENT) {
-    const userId = req.body.member.user.id;
-    const messageId = req.body.message.id;
-    
-    try {
-      // Получаем данные события
-      const eventRef = ref(db, `events`);
-      const snapshot = await get(eventRef);
-      
-      if (!snapshot.exists()) {
-        console.log('No events found in database');
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Event not found.',
-            flags: 64
-          }
-        });
-      }
-
-      // Ищем событие
-      const event = await findEvent(snapshot, messageId, req.body.channel_id);
-      if (!event) {
-        console.log('Event not found for message:', messageId);
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Event not found.',
-            flags: 64
-          }
-        });
-      }
-
-      const { eventData } = event;
-      const participants = eventData.participants || [];
-
-      // Проверяем, не зарегистрирован ли уже пользователь
-      if (participants.some(p => p.id === userId)) {
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'You are already registered for this event.',
-            flags: 64
-          }
-        });
-      }
-
-      // Если не зарегистрирован - показываем модальное окно
-      console.log('Showing modal window');
-      return res.send(createRegistrationModal(messageId));
-    } catch (error) {
-      console.error('Error checking registration:', error);
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: 'An error occurred while processing your registration.',
-          flags: 64
-        }
-      });
-    }
+  if (!participantRoleId) {
+    throw new Error('Participant role not found');
   }
 
-  // Остальной код обработки модального окна остается без изменений
-  if (type === InteractionType.MODAL_SUBMIT) {
-    const userId = req.body.member.user.id;
-    const username = req.body.member.user.username;
-    const xboxNickname = req.body.data.components[0].components[0].value;
-    const twitchUsername = req.body.data.components[1].components[0].value;
-    const carChoice = req.body.data.components[2].components[0].value;
+  return participantRoleId;
+}
 
-    // Получаем правильный messageId из custom_id модального окна
-    const messageId = req.body.data.custom_id.replace('register_modal_', '');
-    
-    // Получаем данные события
-    const eventRef = ref(db, `events`);
-    const snapshot = await get(eventRef);
-    
-    if (!snapshot.exists()) {
-      console.log('No events found in database');
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: 'Event not found.',
-          flags: 64
-        }
-      });
+function createErrorResponse(message, isEphemeral = true) {
+  return {
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: message,
+      flags: isEphemeral ? 64 : 0
     }
+  };
+}
 
-    // Ищем событие
-    const event = await findEvent(snapshot, messageId, req.body.channel_id);
+// Обработчик нажатия кнопки регистрации
+async function handleRegistrationButton(req, res) {
+  const { guild_id, member: { user: { id: userId } }, message: { id: messageId }, channel_id } = req.body;
+
+  try {
+    // Проверяем роль
+    await checkParticipantRole(guild_id);
+
+    // Проверяем событие
+    const event = await eventService.findEvent(messageId, channel_id);
     if (!event) {
-      console.log('Event not found for message:', messageId);
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: 'Event not found.',
-          flags: 64
-        }
-      });
+      return res.send(createErrorResponse('Event not found.'));
     }
 
-    const { eventData, eventKey } = event;
+    const { eventData } = event;
+    if (eventData.participants?.some(p => p.id === userId)) {
+      return res.send(createErrorResponse('You are already registered for this event.'));
+    }
 
-    // Добавляем участника
-    const participants = eventData.participants || [];
-    participants.push({
-      id: userId,
-      username: username,
-      xbox_nickname: xboxNickname,
-      twitch_username: twitchUsername || null,
-      car_choice: carChoice,
-      registered_at: Date.now()
-    });
-
-    // Добавляем роль
-    await addRoleToUser(req.body.guild_id, userId, eventData.role_id);
-
-    // Обновляем данные в Firebase
-    await updateEvent(eventKey, eventData, participants, messageId);
-
-    // Отправляем обновленное сообщение
-    await sendLog(req.body.guild_id, 
-      `📝 **New Registration**
-• User: ${username} (<@${userId}>)
-• Xbox: ${xboxNickname}
-• Twitch: ${twitchUsername ? `[${twitchUsername}](https://www.twitch.tv/${twitchUsername})` : 'Not provided'}
-• Car: ${carChoice}
-• Event: ${eventData.title}`
-    );
-
-    return res.send({
-      type: InteractionResponseType.UPDATE_MESSAGE,
-      data: {
-        embeds: [createEventEmbed({ ...eventData, participants })],
-        components: [createEventButtons()]
-      }
-    });
+    return res.send(createRegistrationModal(messageId));
+  } catch (error) {
+    console.error('Error handling registration button:', error);
+    return res.send(createErrorResponse(
+      error.message === 'Participant role not found'
+        ? `⚠️ Cannot register: participant role is not set up!\n\nPlease contact server administrators to set up roles using \`/setup_roles\` command.`
+        : `An error occurred: ${error.message}`
+    ));
   }
 }
 
-// Отмена регистрации
-export async function handleCancelRegistration(req, res) {
-  const userId = req.body.member.user.id;
-  const username = req.body.member.user.username;
-  const messageId = req.body.message.id;
+// Обработчик отправки модального окна
+async function handleModalSubmit(req, res) {
+  const { 
+    guild_id,
+    member: { user: { id: userId, username } },
+    data: { custom_id, components },
+    channel_id
+  } = req.body;
 
   try {
-    console.log('Processing cancellation. Message data:', {
-      message_id: messageId,
-      channel_id: req.body.channel_id,
-      interaction_id: req.body.id
-    });
+    const messageId = custom_id.replace('register_modal_', '');
+    const event = await eventService.findEvent(messageId, channel_id);
     
-    const eventRef = ref(db, `events`);
-    const snapshot = await get(eventRef);
-    
-    if (!snapshot.exists()) {
-      console.log('No events found in database');
-      throw new Error('Event not found');
-    }
-
-    const event = await findEvent(snapshot, messageId, req.body.channel_id, req.body.message.interaction?.id);
     if (!event) {
       throw new Error('Event not found');
     }
 
-    const { eventData, eventKey } = event;
-    const participants = eventData.participants || [];
+    const { eventKey, eventData } = event;
+    const participant = {
+      id: userId,
+      username,
+      xbox_nickname: components[0].components[0].value,
+      twitch_username: components[1].components[0].value || null,
+      car_choice: components[2].components[0].value
+    };
+
+    // Добавляем участника и обновляем сообщение
+    const { participants } = await eventService.addParticipant(eventKey, participant);
+    await eventService.updateMessageIds(eventKey, messageId);
+
+    // Добавляем роль
+    try {
+      await roleService.addRoleToUser(guild_id, userId, eventData.role_id);
+    } catch (error) {
+      console.error('Error adding role:', error);
+      // Продолжаем выполнение, даже если не удалось добавить роль
+    }
+
+    // Отправляем лог
+    try {
+      await logService.logEvent(guild_id, 
+        `📝 **New Registration**
+> User: ${username} (<@${userId}>)
+> Xbox: ${participant.xbox_nickname}
+> Twitch: ${participant.twitch_username ? `[${participant.twitch_username}](https://www.twitch.tv/${participant.twitch_username})` : 'Not provided'}
+> Car: ${participant.car_choice}
+> Event: ${eventData.title}`
+      );
+    } catch (error) {
+      console.error('Error sending log:', error);
+      // Продолжаем выполнение, даже если не удалось отправить лог
+    }
+
+    // Сначала обновляем сообщение с эмбедом
+    await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages/${messageId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        embeds: [createEventEmbed({ ...eventData, participants })],
+        components: [createEventButtons()]
+      })
+    });
+
+    // Затем отправляем эфемерное сообщение
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `✅ Successfully registered for ${eventData.title}!
+Your XBOX Gamertag: ${participant.xbox_nickname}
+Your Car: ${participant.car_choice}`,
+        flags: 64
+      }
+    });
+
+  } catch (error) {
+    await logService.logError(guild_id, 'handleModalSubmit', error);
+    return res.send(createErrorResponse(
+      error.message === 'Event not found' 
+        ? 'Event not found. Please try again.'
+        : 'Failed to process registration. Please try again later.'
+    ));
+  }
+}
+
+// Основной обработчик регистрации
+export async function handleRegisterEvent(req, res) {
+  const { type } = req.body;
+  console.log('handleRegisterEvent called with type:', type);
+
+  if (type === InteractionType.MESSAGE_COMPONENT) {
+    return handleRegistrationButton(req, res);
+  }
+
+  if (type === InteractionType.MODAL_SUBMIT) {
+    return handleModalSubmit(req, res);
+  }
+
+  return res.send(createErrorResponse('Invalid interaction type.'));
+}
+
+// Обработчик отмены регистрации
+export async function handleCancelRegistration(req, res) {
+  const { guild_id, member: { user: { id: userId } }, message: { id: messageId }, channel_id } = req.body;
+
+  try {
+    const event = await eventService.findEvent(messageId, channel_id);
+    
+    if (!event) {
+      return res.send(createErrorResponse('Event not found.'));
+    }
+
+    const { eventKey, eventData } = event;
 
     // Проверяем, зарегистрирован ли пользователь
-    if (!participants.some(p => p.id === userId)) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: 'You are not registered for this event.',
-          flags: 64
-        }
-      });
+    const participant = eventData.participants?.find(p => p.id === userId);
+    if (!participant) {
+      return res.send(createErrorResponse('You are not registered for this event.'));
     }
 
     // Удаляем участника
-    const updatedParticipants = participants.filter(p => p.id !== userId);
+    const { participants } = await eventService.removeParticipant(eventKey, userId);
 
     // Удаляем роль
     try {
-      const response = await fetch(
-        `https://discord.com/api/v10/guilds/${req.body.guild_id}/members/${userId}/roles/${eventData.role_id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (!response.ok) {
-        console.error('Error removing role:', {
-          status: response.status,
-          statusText: response.statusText
-        });
-      }
+      await roleService.removeRoleFromUser(guild_id, userId, eventData.role_id);
     } catch (error) {
       console.error('Error removing role:', error);
+      // Продолжаем выполнение, даже если не удалось удалить роль
     }
 
-    // Обновляем данные в Firebase
-    await updateEvent(eventKey, eventData, updatedParticipants, messageId);
-
-    // Отправляем обновленное сообщение
-    await sendLog(req.body.guild_id,
+    // Отправляем лог
+    await logService.logEvent(guild_id, 
       `❌ **Registration Cancelled**
-• User: ${username} (<@${userId}>)
-• Event: ${eventData.title}`
+> User: ${participant.username} (<@${userId}>)
+> Xbox: ${participant.xbox_nickname}
+> Event: ${eventData.title}`
     );
 
-    return res.send({
-      type: InteractionResponseType.UPDATE_MESSAGE,
-      data: {
-        embeds: [createEventEmbed({ ...eventData, participants: updatedParticipants })],
+    // Сначала обновляем сообщение с эмбедом
+    await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages/${messageId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        embeds: [createEventEmbed({ ...eventData, participants })],
         components: [createEventButtons()]
+      })
+    });
+
+    // Затем отправляем эфемерное сообщение
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `✅ Your registration for ${eventData.title} has been cancelled.`,
+        flags: 64
       }
     });
 
   } catch (error) {
-    console.error('Error handling cancellation:', error);
-    throw error;
+    await logService.logError(guild_id, 'handleCancelRegistration', error);
+    return res.send(createErrorResponse(
+      'Failed to cancel registration. Please try again later.'
+    ));
   }
-}
-
-// Вспомогательные функции
-async function findEvent(snapshot, messageId, channelId, interactionId) {
-  let eventFound = false;
-  let eventData = null;
-  let eventKey = null;
-
-  snapshot.forEach((childSnapshot) => {
-    const event = childSnapshot.val();
-    if (
-      (event.message_ids && event.message_ids.includes(messageId)) || 
-      (event.channel_id === channelId && 
-       Math.abs(parseInt(childSnapshot.key) - Date.now()) < 30000) ||
-      event.interaction_id === interactionId ||
-      (event.channel_id === channelId && 
-       event.created_at === Math.max(...Object.values(snapshot.val()).map(e => e.created_at)))
-    ) {
-      eventFound = true;
-      eventData = event;
-      eventKey = childSnapshot.key;
-      return true;
-    }
-  });
-
-  return eventFound ? { eventData, eventKey } : null;
-}
-
-async function addRoleToUser(guildId, userId, roleId) {
-  try {
-    console.log('Adding role to user:', { guild_id: guildId, user_id: userId, role_id: roleId });
-
-    const response = await fetch(
-      `https://discord.com/api/v10/guilds/${guildId}/members/${userId}/roles/${roleId}`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Error response from Discord:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData
-      });
-      throw new Error(`Failed to add role: ${response.status} ${response.statusText}`);
-    }
-
-    console.log('Role added successfully');
-  } catch (error) {
-    console.error('Error adding role:', error);
-    throw error;
-  }
-}
-
-// Вспомогательная функция для обновления события
-async function updateEvent(eventKey, eventData, participants, messageId) {
-  await set(ref(db, `events/${eventKey}`), {
-    ...eventData,
-    participants,
-    message_ids: [...(eventData.message_ids || []), messageId].filter((id, index, self) => 
-      self.indexOf(id) === index
-    )
-  });
 }

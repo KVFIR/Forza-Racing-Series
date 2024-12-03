@@ -4,7 +4,8 @@ import {
 } from 'discord-interactions';
 import { ref, set, get } from 'firebase/database';
 import { db } from '../firebase.js';
-import { sendLog } from './loggingCommand.js';
+import { logService } from '../services/logService.js';
+import { ticketService } from '../services/ticketService.js';
 
 // Создание кнопки для репорта инцидентов
 export async function handleCreateTicketButton(req, res) {
@@ -29,7 +30,7 @@ export async function handleCreateTicketButton(req, res) {
             ]
           }
         ],
-        flags: 0 // Явно указываем, что сообщение должно быть публичным
+        flags: 0 // Явно указываем, что сообщение должно быт публичным
       }
     });
   } catch (error) {
@@ -47,8 +48,7 @@ export async function handleCreateTicketButton(req, res) {
 // Показ модального окна
 export async function handleShowTicketModal(req, res) {
   try {
-    console.log('Showing ticket modal');
-    const modalData = {
+    return res.send({
       type: InteractionResponseType.MODAL,
       data: {
         title: "Race Incident Report",
@@ -100,16 +100,13 @@ export async function handleShowTicketModal(req, res) {
           }
         ]
       }
-    };
-
-    console.log('Sending modal data:', JSON.stringify(modalData));
-    return res.send(modalData);
+    });
   } catch (error) {
-    console.error('Error showing modal:', error);
+    console.error('Error showing ticket modal:', error);
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: "Failed to show report form.",
+        content: "Failed to show report form. Please try again.",
         flags: 64
       }
     });
@@ -132,32 +129,76 @@ async function getNextTicketNumber(guildId) {
   return nextNumber;
 }
 
-// Обработка отправки формы
+// Создаем компоненты с кнопками
+function createTicketButtons(ticketId) {
+  return {
+    type: 1,
+    components: [
+      {
+        type: 2,
+        custom_id: `verdict_ticket_${ticketId}`,
+        label: "Make Verdict",
+        style: 1, // Синяя кнопка
+        emoji: {
+          name: "⚖️"
+        }
+      },
+      {
+        type: 2,
+        custom_id: `close_ticket_${ticketId}`,
+        label: "Close Ticket",
+        style: 4, // Красная кнопка
+        emoji: {
+          name: "🔒"
+        }
+      }
+    ]
+  };
+}
+
+// Обработка отправки тикета
 export async function handleTicketSubmit(req, res) {
-  console.log('Handling ticket submit');
-  const { member, data, guild_id, channel_id } = req.body;
-  
-  // Мгновенно отправляем ответ пользователю
-  res.send({
-    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      content: "✅ Your incident report has been submitted! A private thread has been created.",
-      flags: 64 // Эфемерное сообщение
-    }
-  });
+  const { 
+    guild_id,
+    member: { user: { id: userId, username } },
+    data: { components },
+    channel_id
+  } = req.body;
 
   try {
     // Получаем следующий номер тикета
     const ticketNumber = await getNextTicketNumber(guild_id);
-    
-    // Получаем роли из Firebase
-    const rolesSnapshot = await get(ref(db, `guild_roles/${guild_id}`));
+
+    // Получам роль Race Control
+    const rolesRef = ref(db, `guild_roles/${guild_id}`);
+    const rolesSnapshot = await get(rolesRef);
     const raceControlRoleId = rolesSnapshot.val()?.race_control_role;
 
     if (!raceControlRoleId) {
-      console.error('Race Control role not found for guild:', guild_id);
-      return;
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "⚠️ Race Control role is not set up. Please contact administrators.",
+          flags: 64
+        }
+      });
     }
+
+    const ticketData = {
+      number: ticketNumber,
+      author: {
+        id: userId,
+        username
+      },
+      involved_users: components[0].components[0].value,
+      video_link: components[1].components[0].value,
+      comment: components[2].components[0].value || null,
+      channel_id,
+      created_at: Date.now()
+    };
+
+    // Создаем тикет
+    const { ticketId, ticket } = await ticketService.createTicket(guild_id, ticketData);
 
     // Создаем приватную ветку напрямую в канале
     const threadResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}/threads`, {
@@ -167,9 +208,9 @@ export async function handleTicketSubmit(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        name: `ticket-${ticketNumber}-${member.user.username}`,
+        name: `#${ticketNumber} | ${username}`,
         type: 12, // GUILD_PRIVATE_THREAD
-        auto_archive_duration: 1440, // 24 часа
+        auto_archive_duration: 1440,
         invitable: false
       })
     });
@@ -180,25 +221,7 @@ export async function handleTicketSubmit(req, res) {
 
     const thread = await threadResponse.json();
 
-    // Добавляем автора тикета в ветку
-    await fetch(`https://discord.com/api/v10/channels/${thread.id}/thread-members/${member.user.id}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
-
-    // Добавляем Race Control в ветку
-    if (raceControlRoleId) {
-      await fetch(`https://discord.com/api/v10/channels/${thread.id}/thread-members/${raceControlRoleId}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bot ${process.env.DISCORD_TOKEN}`
-        }
-      });
-    }
-
-    // Отправляем информацию в приватную ветку с пингом Race Control и кнопкой закрытия
+    // Отправляем сообщение в ветку с кнопками
     await fetch(`https://discord.com/api/v10/channels/${thread.id}/messages`, {
       method: 'POST',
       headers: {
@@ -206,63 +229,72 @@ export async function handleTicketSubmit(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        content: `<@&${raceControlRoleId}>\n\n**Race Incident Report #${ticketNumber}**\nReporter: <@${member.user.id}>\nInvolved Users: ${data.components[0].components[0].value}\nVideo Evidence: ${data.components[1].components[0].value}\nComments: ${data.components[2].components[0].value || 'None'}`,
-        components: [
-          {
-            type: 1,
-            components: [
-              {
-                type: 2,
-                custom_id: `close_ticket_${ticketNumber}`,
-                label: "Close Ticket",
-                style: 4, // Красная кнопка
-                emoji: {
-                  name: "🔒"
-                }
-              }
-            ]
-          }
-        ]
+        content: `<@&${raceControlRoleId}> <@${userId}>\n
+🚨 **Incident Report Details** (#${ticketNumber})
+> Reporter: <@${userId}>
+> Involved Users: ${ticket.involved_users}
+> Video Evidence: ${ticket.video_link}
+${ticket.comment ? `> Additional Comments: ${ticket.comment}` : ''}
+
+Please use this thread to discuss the incident.`,
+        components: [createTicketButtons(ticketId)]
       })
     });
 
-    // Сохраняем тикет в базу данных
-    const ticketRef = ref(db, `tickets/${guild_id}/${ticketNumber}`);
-    await set(ticketRef, {
-      ticket_number: ticketNumber,
-      reporter: {
-        id: member.user.id,
-        username: member.user.username
-      },
-      involved_users: data.components[0].components[0].value,
-      video_link: data.components[1].components[0].value,
-      comment: data.components[2].components[0].value || null,
-      status: 'open',
-      thread_id: thread.id,
-      channel_id: channel_id,
-      created_at: Date.now()
+    // Сохраняем ID ветки в тикете
+    const updatedTicket = await ticketService.updateTicket(guild_id, ticketId, {
+      ...ticket,
+      thread_id: thread.id
     });
 
-    await sendLog(guild_id, `🎫 **New Ticket Created**
-• Ticket: #${ticketNumber}
-• Reporter: <@${member.user.id}>
-• Thread: <#${thread.id}>`);
+    // Логируем создание тикета
+    await logService.logTicketCreated(guild_id, {
+      ...updatedTicket,
+      number: ticketNumber
+    });
+
+    // Отправляе эфемерное соо��щение с подтверждением
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `✅ Your incident report has been submitted (#${ticketNumber}).
+You can discuss it here: <#${thread.id}>`,
+        flags: 64
+      }
+    });
 
   } catch (error) {
-    console.error('Error in handleTicketSubmit:', error);
+    console.error('Error creating ticket:', error);
+    await logService.logError(guild_id, 'handleTicketSubmit', error);
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "Failed to submit incident report. Please try again.",
+        flags: 64
+      }
+    });
   }
 }
 
 // Обработка закрытия тикета
 export async function handleCloseTicket(req, res) {
-  console.log('Handling close ticket:', req.body);
-  const { member, guild_id, data } = req.body;
+  const { 
+    guild_id, 
+    member,
+    data: { custom_id }
+  } = req.body;
   
-  // Получаем номер тикета из custom_id кнопки
-  const ticketNumber = data.custom_id.replace('close_ticket_', '');
-
   try {
-    // Проверяем роли пользователя
+    const ticketId = custom_id.replace('close_ticket_', '');
+    
+    // Получаем актуальную версию тикета
+    let ticket = await ticketService.getTicket(guild_id, ticketId);
+    
+    if (!ticket) {
+      throw new Error('Ticket not found');
+    }
+
+    // Проверяем права на закрытие тикета
     const rolesSnapshot = await get(ref(db, `guild_roles/${guild_id}`));
     const raceControlRoleId = rolesSnapshot.val()?.race_control_role;
 
@@ -279,17 +311,8 @@ export async function handleCloseTicket(req, res) {
       });
     }
 
-    // Получ��ем информацию о тикете
-    const ticketRef = ref(db, `tickets/${guild_id}/${ticketNumber}`);
-    const ticketSnapshot = await get(ticketRef);
-    const ticket = ticketSnapshot.val();
-
-    if (!ticket) {
-      throw new Error('Ticket not found');
-    }
-
     // Удаляем создателя тикета из ветки
-    await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/thread-members/${ticket.reporter.id}`, {
+    await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/thread-members/${ticket.author.id}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bot ${process.env.DISCORD_TOKEN}`
@@ -309,8 +332,8 @@ export async function handleCloseTicket(req, res) {
       })
     });
 
-    // Обновляем статус тикета в базе данных
-    await set(ticketRef, {
+    // Обновляем статус тикета
+    await ticketService.updateTicket(guild_id, ticketId, {
       ...ticket,
       status: 'closed',
       closed_by: {
@@ -320,26 +343,160 @@ export async function handleCloseTicket(req, res) {
       closed_at: Date.now()
     });
 
-    await sendLog(guild_id, `🔒 **Ticket Closed**
-• Ticket: #${ticketNumber}
-• Closed by: <@${member.user.id}>
-• Reporter: <@${ticket.reporter.id}>`);
+    // Получаем свежую версию тикета после обновления
+    ticket = await ticketService.getTicket(guild_id, ticketId);
 
-    // Отправляем подтверждение
+    // Логируем закрытие тикета с актуальными данными
+    await logService.logTicketClosed(guild_id, ticket, {
+      id: member.user.id,
+      username: member.user.username
+    });
+
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: `✅ Ticket #${ticketNumber} has been closed.`,
+        content: `✅ Ticket #${ticket.number} has been closed.`,
         flags: 64
       }
     });
 
   } catch (error) {
     console.error('Error closing ticket:', error);
+    await logService.logError(guild_id, 'handleCloseTicket', error);
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: "Failed to close ticket. Error: " + error.message,
+        content: "Failed to close ticket. Please try again.",
+        flags: 64
+      }
+    });
+  }
+}
+
+// Добавляем обработчик для показа модального окна с вердиктом
+export async function handleShowVerdictModal(req, res) {
+  const { 
+    member,
+    data: { custom_id }
+  } = req.body;
+
+  try {
+    // Проверяем права
+    const guildId = req.body.guild_id;
+    const rolesSnapshot = await get(ref(db, `guild_roles/${guildId}`));
+    const raceControlRoleId = rolesSnapshot.val()?.race_control_role;
+
+    const hasPermission = member.permissions === "8" || // Администратор
+                         member.roles.includes(raceControlRoleId); // Race Control
+
+    if (!hasPermission) {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ You don't have permission to make verdicts!",
+          flags: 64
+        }
+      });
+    }
+
+    const ticketId = custom_id.replace('verdict_ticket_', '');
+
+    return res.send({
+      type: InteractionResponseType.MODAL,
+      data: {
+        title: "Make Verdict",
+        custom_id: `verdict_modal_${ticketId}`,
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 4,
+                custom_id: "verdict_text",
+                label: "Verdict Decision",
+                style: 2, // Параграф
+                min_length: 1,
+                max_length: 1000,
+                required: true,
+                placeholder: "Enter your verdict decision..."
+              }
+            ]
+          }
+        ]
+      }
+    });
+  } catch (error) {
+    console.error('Error showing verdict modal:', error);
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "Failed to show verdict form.",
+        flags: 64
+      }
+    });
+  }
+}
+
+// Обработчик отправки вердикта
+export async function handleVerdictSubmit(req, res) {
+  const { 
+    guild_id,
+    member: { user: { id: userId, username } },
+    data: { custom_id, components }
+  } = req.body;
+
+  try {
+    const ticketId = custom_id.replace('verdict_modal_', '');
+    const ticket = await ticketService.getTicket(guild_id, ticketId);
+    
+    if (!ticket) {
+      throw new Error('Ticket not found');
+    }
+
+    const verdictText = components[0].components[0].value;
+
+    // Отправляем вердикт в ветку
+    await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: `⚖️ **Verdict** (#${ticket.number})
+> Judge: <@${userId}>
+> Decision: ${verdictText}`
+      })
+    });
+
+    // Обновляем тикет
+    await ticketService.updateTicket(guild_id, ticketId, {
+      ...ticket,
+      verdict: {
+        text: verdictText,
+        by: {
+          id: userId,
+          username
+        },
+        at: Date.now()
+      }
+    });
+
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "✅ Verdict has been submitted.",
+        flags: 64
+      }
+    });
+
+  } catch (error) {
+    console.error('Error submitting verdict:', error);
+    await logService.logError(guild_id, 'handleVerdictSubmit', error);
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "Failed to submit verdict. Please try again.",
         flags: 64
       }
     });
