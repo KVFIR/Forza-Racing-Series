@@ -67,6 +67,24 @@ class TicketService {
     // Получаем и возвращаем обновленный тикет
     return await this.getTicket(guildId, ticketId);
   }
+
+  /**
+   * Получает следующий номер тикета
+   */
+  async getNextTicketNumber(guildId) {
+    const ticketsRef = ref(db, `ticket_counters/${guildId}`);
+    const snapshot = await get(ticketsRef);
+    const currentNumber = snapshot.exists() ? snapshot.val().current : 1000;
+    const nextNumber = currentNumber + 1;
+    
+    // Обновляем счетчик
+    await set(ticketsRef, {
+      current: nextNumber,
+      updated_at: Date.now()
+    });
+    
+    return nextNumber;
+  }
 }
 
 export const ticketService = new TicketService();

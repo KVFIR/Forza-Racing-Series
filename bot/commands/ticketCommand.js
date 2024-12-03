@@ -7,6 +7,27 @@ import { db } from '../firebase.js';
 import { logService } from '../services/logService.js';
 import { ticketService } from '../services/ticketService.js';
 
+// В начале файла добавим проверку прав
+const requiredPermissions = [
+  'CREATE_PRIVATE_THREADS',
+  'SEND_MESSAGES_IN_THREADS',
+  'MANAGE_THREADS',
+  'VIEW_CHANNEL'
+];
+
+// В начале файла добавим проверку
+async function getTicketsChannel(guildId) {
+  const settingsRef = ref(db, `guild_settings/${guildId}`);
+  const snapshot = await get(settingsRef);
+  const ticketsChannelId = snapshot.val()?.tickets_channel;
+
+  if (!ticketsChannelId) {
+    throw new Error('Tickets channel not configured');
+  }
+
+  return ticketsChannelId;
+}
+
 // Создание кнопки для репорта инцидентов
 export async function handleCreateTicketButton(req, res) {
   try {
@@ -160,47 +181,16 @@ function createTicketButtons(ticketId) {
 export async function handleTicketSubmit(req, res) {
   const { 
     guild_id,
+    channel_id,
     member: { user: { id: userId, username } },
-    data: { components },
-    channel_id
+    data: { components }
   } = req.body;
 
   try {
-    // Получаем следующий номер тикета
-    const ticketNumber = await getNextTicketNumber(guild_id);
+    const involvedUsers = components[0].components[0].value;
+    const ticketNumber = await ticketService.getNextTicketNumber(guild_id);
 
-    // Получам роль Race Control
-    const rolesRef = ref(db, `guild_roles/${guild_id}`);
-    const rolesSnapshot = await get(rolesRef);
-    const raceControlRoleId = rolesSnapshot.val()?.race_control_role;
-
-    if (!raceControlRoleId) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: "⚠️ Race Control role is not set up. Please contact administrators.",
-          flags: 64
-        }
-      });
-    }
-
-    const ticketData = {
-      number: ticketNumber,
-      author: {
-        id: userId,
-        username
-      },
-      involved_users: components[0].components[0].value,
-      video_link: components[1].components[0].value,
-      comment: components[2].components[0].value || null,
-      channel_id,
-      created_at: Date.now()
-    };
-
-    // Создаем тикет
-    const { ticketId, ticket } = await ticketService.createTicket(guild_id, ticketData);
-
-    // Создаем приватную ветку напрямую в канале
+    // Создаем тред...
     const threadResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}/threads`, {
       method: 'POST',
       headers: {
@@ -209,19 +199,36 @@ export async function handleTicketSubmit(req, res) {
       },
       body: JSON.stringify({
         name: `#${ticketNumber} | ${username}`,
-        type: 12, // GUILD_PRIVATE_THREAD
+        type: 12,
         auto_archive_duration: 1440,
-        invitable: false
+        rate_limit_per_user: 0
       })
     });
 
     if (!threadResponse.ok) {
-      throw new Error('Failed to create thread');
+      console.error('Failed to create thread:', await threadResponse.text());
+      throw new Error(`Failed to create thread: ${threadResponse.status}`);
     }
 
     const thread = await threadResponse.json();
 
-    // Отправляем сообщение в ветку с кнопками
+    // Создаем объект тикета
+    const ticketData = {
+      number: ticketNumber,
+      author: {
+        id: userId,
+        username
+      },
+      involved_users: involvedUsers,
+      thread_id: thread.id,
+      created_at: Date.now(),
+      status: 'open'
+    };
+
+    // Создаем тикет в базе данных
+    const { ticketId } = await ticketService.createTicket(guild_id, ticketData);
+
+    // Отправляем первое сообщение в тред
     await fetch(`https://discord.com/api/v10/channels/${thread.id}/messages`, {
       method: 'POST',
       headers: {
@@ -229,47 +236,33 @@ export async function handleTicketSubmit(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        content: `<@&${raceControlRoleId}> <@${userId}>\n
-🚨 **Incident Report Details** (#${ticketNumber})
+        content: `🎫 **New Incident Report** (#${ticketNumber})
 > Reporter: <@${userId}>
-> Involved Users: ${ticket.involved_users}
-> Video Evidence: ${ticket.video_link}
-${ticket.comment ? `> Additional Comments: ${ticket.comment}` : ''}
-
-Please use this thread to discuss the incident.`,
-        components: [createTicketButtons(ticketId)]
+> Involved Users: ${involvedUsers}`,
+        components: [createTicketButtons(ticketId)] // Добавляем кнопки
       })
     });
 
-    // Сохраняем ID ветки в тикете
-    const updatedTicket = await ticketService.updateTicket(guild_id, ticketId, {
-      ...ticket,
-      thread_id: thread.id
-    });
+    // Логируем создание тикета с полными данными
+    await logService.logTicketCreated(guild_id, ticketData);
 
-    // Логируем создание тикета
-    await logService.logTicketCreated(guild_id, {
-      ...updatedTicket,
-      number: ticketNumber
-    });
-
-    // Отправляе эфемерное соо��щение с подтверждением
+    // Отправляем успешный ответ
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: `✅ Your incident report has been submitted (#${ticketNumber}).
-You can discuss it here: <#${thread.id}>`,
+        content: `✅ **Incident Report Created**
+> Please check the <#${thread.id}> for further communication.`,
         flags: 64
       }
     });
 
   } catch (error) {
-    console.error('Error creating ticket:', error);
+    console.error('Error in handleTicketSubmit:', error);
     await logService.logError(guild_id, 'handleTicketSubmit', error);
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: "Failed to submit incident report. Please try again.",
+        content: "Failed to create ticket. Please try again.",
         flags: 64
       }
     });
