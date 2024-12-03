@@ -251,6 +251,21 @@ Required permissions:
 
     const thread = await threadResponse.json();
 
+    // Добавляем роль Race Control в тред
+    if (raceControlRoleId) {
+      await fetch(`https://discord.com/api/v10/channels/${thread.id}/thread-members`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: raceControlRoleId,
+          member_count: 100 // Максимальное количество участников с этой ролью
+        })
+      });
+    }
+
     // Создаем объект тикета с полными данными
     const ticketData = {
       number: ticketNumber,
