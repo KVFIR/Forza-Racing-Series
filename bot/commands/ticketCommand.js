@@ -293,7 +293,7 @@ Required permissions:
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        content: `${raceControlMention}🎫 **New Incident Report** (#${ticketNumber})
+        content: `🎫 **New Incident Report** (#${ticketNumber}) ${raceControlMention}
 > Reporter: <@${userId}>
 > Involved Users: ${involvedUsers}
 > Video Evidence: ${videoLink}
