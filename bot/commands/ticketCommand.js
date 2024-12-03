@@ -197,7 +197,13 @@ export async function handleTicketSubmit(req, res) {
   } = req.body;
 
   try {
-    // Создаем тред без предварительной проверки прав
+    // Получаем данные из формы
+    const involvedUsers = components[0].components[0].value;
+    
+    // Получаем следующий номер тикета
+    const ticketNumber = await ticketService.getNextTicketNumber(guild_id);
+
+    // Создаем тред
     const threadResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}/threads`, {
       method: 'POST',
       headers: {
@@ -489,7 +495,7 @@ export async function handleVerdictSubmit(req, res) {
       })
     });
 
-    // Обновляем тик��т
+    // Обновляем тикт
     await ticketService.updateTicket(guild_id, ticketId, {
       ...ticket,
       verdict: {
