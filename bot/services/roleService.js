@@ -6,16 +6,22 @@ class RoleService {
      * Add role to user
      */
     async addRoleToUser(guildId, userId, roleId) {
-      const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}/roles/${roleId}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      try {
+        const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}/roles/${roleId}`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        });
   
-      if (!response.ok) {
-        throw new Error(`Failed to add role. Status: ${response.status}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`Failed to add role. Status: ${response.status}. Message: ${errorData.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error(`Failed to add role to user ${userId} in guild ${guildId}:`, error);
+        throw error;
       }
     }
   
@@ -35,14 +41,16 @@ class RoleService {
           }
         );
   
+        // 404 означает, что роль уже удалена
         if (!response.ok && response.status !== 404) {
-          throw new Error(`Failed to remove role: ${response.status}`);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`Failed to remove role. Status: ${response.status}. Message: ${errorData.message || 'Unknown error'}`);
         }
       } catch (error) {
-        console.error('Error removing role:', error);
+        console.error(`Failed to remove role from user ${userId} in guild ${guildId}:`, error);
         throw error;
       }
     }
-  }
+}
   
-  export const roleService = new RoleService();
+export const roleService = new RoleService();

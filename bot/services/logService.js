@@ -84,12 +84,17 @@ class LogService {
     );
   }
 
-  async logRegistrationCancelled(guildId, eventData, participant) {
+  async logRegistrationCancelled(guildId, participant, eventData) {
+    if (!participant || !eventData) {
+      console.error('Invalid parameters in logRegistrationCancelled:', { participant, eventData });
+      return;
+    }
+
     await sendLog(guildId, 
       `❌ **Registration Cancelled**
-> User: ${participant.username} (<@${participant.id}>)
-> Xbox: ${participant.xbox_nickname}
-> Event: ${eventData.title}`
+> User: ${participant.username || 'Unknown'} (<@${participant.id || 'Unknown'}>)
+> Xbox: ${participant.xbox_nickname || 'Unknown'}
+> Event: ${eventData.title || 'Unknown'}`
     );
   }
 

@@ -73,6 +73,9 @@ app.get('/metrics', (req, res) => {
   });
 });
 
+// Добавим константу для прав администратора
+const ADMINISTRATOR_PERMISSION = BigInt(0x8);
+
 // Interactions endpoint
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
   const { type, data } = req.body;
@@ -91,8 +94,21 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const { name } = data;
       const userId = req.body.member.user.id;
       const username = req.body.member.user.username;
+      const memberPermissions = BigInt(req.body.member.permissions);
       
       try {
+        // Проверяем права администратора для определенных команд
+        const adminOnlyCommands = ['setup_roles', 'logging', 'create_ticket_button', 'create_event'];
+        if (adminOnlyCommands.includes(name) && !(memberPermissions & ADMINISTRATOR_PERMISSION)) {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: "❌ You need administrator permissions to use this command.",
+              flags: 64 // Делает сообщение видимым только для отправителя
+            }
+          });
+        }
+
         // Получаем или создаем пользователя
         let user = await getUser(userId);
         if (!user) {
