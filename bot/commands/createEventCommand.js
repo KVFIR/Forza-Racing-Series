@@ -43,6 +43,7 @@ Need help? Contact server administrators.`,
     };
 
     const { eventKey } = await eventService.createEvent(guild_id, channel_id, id, eventData);
+    await logService.logEventCreated(guild_id, eventData);
 
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -210,17 +211,9 @@ async function handleModalSubmit(req, res) {
 
     // Отправляем лог
     try {
-      await logService.logEvent(guild_id, 
-        `📝 **New Registration**
-> User: ${username} (<@${userId}>)
-> Xbox: ${participant.xbox_nickname}
-> Twitch: ${participant.twitch_username ? `[${participant.twitch_username}](https://www.twitch.tv/${participant.twitch_username})` : 'Not provided'}
-> Car: ${participant.car_choice}
-> Event: ${eventData.title}`
-      );
+      await logService.logRegistration(guild_id, eventData, participant);
     } catch (error) {
       console.error('Error sending log:', error);
-      // Продолжаем выполнение, даже если не удалось отправить лог
     }
 
     // Сначала обновляем сообщение с эмбедом
@@ -304,12 +297,7 @@ export async function handleCancelRegistration(req, res) {
     }
 
     // Отправляем лог
-    await logService.logEvent(guild_id, 
-      `❌ **Registration Cancelled**
-> User: ${participant.username} (<@${userId}>)
-> Xbox: ${participant.xbox_nickname}
-> Event: ${eventData.title}`
-    );
+    await logService.logRegistrationCancelled(guild_id, participant, eventData);
 
     // Сначала обновляем сообщение с эмбедом
     await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages/${messageId}`, {

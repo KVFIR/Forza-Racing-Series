@@ -1,6 +1,5 @@
 import { ref, get, set } from 'firebase/database';
 import { db } from '../firebase.js';
-import { sendLog } from '../commands/loggingCommand.js';
 
 /**
  * Service for managing events

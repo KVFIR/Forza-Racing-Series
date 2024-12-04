@@ -8,7 +8,7 @@ import {
 } from 'discord-interactions';
 import { getUser, createUser } from './database.js';
 import { db } from './firebase.js';
-import { ref, set, get } from 'firebase/database';
+import { ref, set } from 'firebase/database';
 import { handleTest, handleCreateEvent } from './commands/index.js';
 import { handleLogging } from './commands/loggingCommand.js';
 import { 
@@ -166,15 +166,25 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   }
 });
 
-// Test Firebase
-const testRef = ref(db, 'test');
-try {
-  await set(testRef, { test: 'Connection successful' });
-  console.log('Firebase connection successful');
-} catch (error) {
-  console.error('Firebase connection error:', error);
+// Оборачиваем инициализацию в асинхронную функцию
+async function initializeApp() {
+  // Test Firebase connection
+  const testRef = ref(db, 'test');
+  try {
+    await set(testRef, { test: 'Connection successful' });
+    console.log('Firebase connection successful');
+  } catch (error) {
+    console.error('Firebase connection error:', error);
+  }
+
+  // Start the server
+  app.listen(PORT, () => {
+    console.log('Listening on port', PORT);
+  });
 }
 
-app.listen(PORT, () => {
-  console.log('Listening on port', PORT);
+// Запускаем инициализацию
+initializeApp().catch(error => {
+  console.error('Failed to initialize app:', error);
+  process.exit(1);
 });

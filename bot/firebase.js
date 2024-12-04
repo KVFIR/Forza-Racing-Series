@@ -11,7 +11,15 @@ const firebaseConfig = {
   databaseURL: process.env.FIREBASE_DATABASE_URL
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+let db;
+
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  console.log('Firebase initialized successfully');
+} catch (error) {
+  console.error('Error initializing Firebase:', error);
+  throw new Error('Failed to initialize Firebase. Check your configuration.');
+}
 
 export { db };

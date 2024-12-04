@@ -376,31 +376,39 @@ export async function handleCloseTicket(req, res) {
       });
     }
 
+    // Сразу отправляем ответ на interaction
+    res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "🔒 Closing ticket...",
+        flags: 64
+      }
+    });
+
     const ticketId = custom_id.replace('close_ticket_', '');
     
     // Получаем актуальную версию тикета
     let ticket = await ticketService.getTicket(guild_id, ticketId);
     
     if (!ticket) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: "❌ Ticket not found!",
-          flags: 64
-        }
-      });
+      throw new Error('Ticket not found');
     }
 
-    // Отправляем единственный ответ на интеракцию
-    res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: "🔒 Ticket closed successfully",
-        flags: 64
-      }
+    // Отправляем сообщение о закрытии в тред
+    await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: `🔒 **Ticket Closed**
+> Closed by: <@${member.user.id}>
+> Ticket: #${ticket.number}`
+      })
     });
 
-    // Выполняем остальные операции после отправки ответа
+    // Выполняем остальные операции после отправки сообщения
     await Promise.all([
       // Удаляем создателя тикета из ветки
       fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/thread-members/${ticket.author.id}`, {
@@ -420,7 +428,7 @@ export async function handleCloseTicket(req, res) {
         body: JSON.stringify({
           archived: true,
           locked: true,
-          closed: true // Добавляем закрытие треда
+          closed: true
         })
       })
     ]);
@@ -434,20 +442,6 @@ export async function handleCloseTicket(req, res) {
         username: member.user.username
       },
       closed_at: Date.now()
-    });
-
-    // Отправляем сообщение о закрытии в тред
-    await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        content: `🔒 **Ticket Closed**
-> Closed by: <@${member.user.id}>
-> Ticket: #${ticket.number}`
-      })
     });
 
     // Получаем свежую версию тикета после обновления

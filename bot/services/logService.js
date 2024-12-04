@@ -72,6 +72,35 @@ class LogService {
       return `${minutes}m`;
     }
   }
+
+  async logRegistration(guildId, eventData, participant) {
+    await sendLog(guildId, 
+      `📝 **New Registration**
+> User: ${participant.username} (<@${participant.id}>)
+> Xbox: ${participant.xbox_nickname}
+> Twitch: ${participant.twitch_username ? `[${participant.twitch_username}](https://www.twitch.tv/${participant.twitch_username})` : 'Not provided'}
+> Car: ${participant.car_choice}
+> Event: ${eventData.title}`
+    );
+  }
+
+  async logRegistrationCancelled(guildId, eventData, participant) {
+    await sendLog(guildId, 
+      `❌ **Registration Cancelled**
+> User: ${participant.username} (<@${participant.id}>)
+> Xbox: ${participant.xbox_nickname}
+> Event: ${eventData.title}`
+    );
+  }
+
+  async logEventCreated(guildId, eventData) {
+    await sendLog(guildId,
+      `🏁 **New Event Created**
+> Title: ${eventData.title}
+> Max Participants: ${eventData.max_participants}
+> Role: <@&${eventData.role_id}>`
+    );
+  }
 }
 
 export const logService = new LogService();
