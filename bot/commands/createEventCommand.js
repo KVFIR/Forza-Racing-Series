@@ -216,20 +216,10 @@ async function handleModalSubmit(req, res) {
       console.error('Error sending log:', error);
     }
 
-    // Сначала обновляем сообщение с эмбедом
-    await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages/${messageId}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        embeds: [createEventEmbed({ ...eventData, participants })],
-        components: [createEventButtons()]
-      })
-    });
+    // Обновляем все сообщения ивента
+    await updateAllEventMessages(channel_id, { ...eventData, participants });
 
-    // Затем отправляем эфемерное сообщение
+    // Отправляем эфемерное сообщение
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
@@ -293,26 +283,16 @@ export async function handleCancelRegistration(req, res) {
       await roleService.removeRoleFromUser(guild_id, userId, eventData.role_id);
     } catch (error) {
       console.error('Error removing role:', error);
-      // Продолжаем выполнение, даже если не удалось удалить роль
+      // Продолжаем выполнение, даже есл�� не удалось удалить роль
     }
 
     // Отправляем лог
     await logService.logRegistrationCancelled(guild_id, participant, eventData);
 
-    // Сначала обновляем сообщение с эмбедом
-    await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages/${messageId}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        embeds: [createEventEmbed({ ...eventData, participants })],
-        components: [createEventButtons()]
-      })
-    });
+    // Обновляем все сообщения ивента
+    await updateAllEventMessages(channel_id, { ...eventData, participants });
 
-    // Затем отправляем эфемерное сообщение
+    // Отправляем эфемерное сообщение
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
@@ -327,4 +307,27 @@ export async function handleCancelRegistration(req, res) {
       'Failed to cancel registration. Please try again later.'
     ));
   }
+}
+
+// Функция для обновления всех сообщений ивента
+async function updateAllEventMessages(channelId, eventData) {
+  if (!eventData.message_ids || eventData.message_ids.length === 0) {
+    return;
+  }
+
+  const updatePromises = eventData.message_ids.map(messageId => 
+    fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        embeds: [createEventEmbed(eventData)],
+        components: [createEventButtons()]
+      })
+    })
+  );
+
+  await Promise.all(updatePromises);
 }
