@@ -77,12 +77,14 @@ class EventService {
       registered_at: Date.now()
     });
 
-    await set(eventRef, {
+    const updatedEventData = {
       ...eventData,
       participants
-    });
+    };
 
-    return { eventData, participants };
+    await set(eventRef, updatedEventData);
+
+    return { eventData: updatedEventData, participants };
   }
 
   /**
@@ -105,12 +107,14 @@ class EventService {
       throw new Error('User not registered');
     }
 
-    await set(eventRef, {
+    const updatedEventData = {
       ...eventData,
       participants: updatedParticipants
-    });
+    };
 
-    return { eventData, participants: updatedParticipants };
+    await set(eventRef, updatedEventData);
+
+    return { eventData: updatedEventData, participants: updatedParticipants };
   }
 
   /**

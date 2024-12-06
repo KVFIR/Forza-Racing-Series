@@ -197,13 +197,13 @@ async function handleModalSubmit(req, res) {
       car_choice: components[2].components[0].value
     };
 
-    // Добавляем участника и обновляем сообщение
-    const { participants } = await eventService.addParticipant(eventKey, participant);
+    // Добавляем участника и получаем обновленные данные
+    const { eventData: updatedEventData, participants } = await eventService.addParticipant(eventKey, participant);
     await eventService.updateMessageIds(eventKey, messageId);
 
     // Добавляем роль
     try {
-      await roleService.addRoleToUser(guild_id, userId, eventData.role_id);
+      await roleService.addRoleToUser(guild_id, userId, updatedEventData.role_id);
     } catch (error) {
       console.error('Error adding role:', error);
       // Продолжаем выполнение, даже если не удалось добавить роль
@@ -211,19 +211,19 @@ async function handleModalSubmit(req, res) {
 
     // Отправляем лог
     try {
-      await logService.logRegistration(guild_id, eventData, participant);
+      await logService.logRegistration(guild_id, updatedEventData, participant);
     } catch (error) {
       console.error('Error sending log:', error);
     }
 
     // Обновляем все сообщения ивента
-    await updateAllEventMessages(channel_id, { ...eventData, participants });
+    await updateAllEventMessages(channel_id, updatedEventData);
 
     // Отправляем эфемерное сообщение
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: `✅ Successfully registered for ${eventData.title}!
+        content: `✅ Successfully registered for ${updatedEventData.title}!
 Your XBOX Gamertag: ${participant.xbox_nickname}
 Your Car: ${participant.car_choice}`,
         flags: 64
@@ -275,28 +275,28 @@ export async function handleCancelRegistration(req, res) {
       return res.send(createErrorResponse('You are not registered for this event.'));
     }
 
-    // Удаляем участника
-    const { participants } = await eventService.removeParticipant(eventKey, userId);
+    // Удаляем участника и получаем обновленные данные
+    const { eventData: updatedEventData } = await eventService.removeParticipant(eventKey, userId);
 
     // Удаляем роль
     try {
-      await roleService.removeRoleFromUser(guild_id, userId, eventData.role_id);
+      await roleService.removeRoleFromUser(guild_id, userId, updatedEventData.role_id);
     } catch (error) {
       console.error('Error removing role:', error);
-      // Продолжаем выполнение, даже есл�� не удалось удалить роль
+      // Продолжаем выполнение, даже если не удалось удалить роль
     }
 
     // Отправляем лог
-    await logService.logRegistrationCancelled(guild_id, participant, eventData);
+    await logService.logRegistrationCancelled(guild_id, participant, updatedEventData);
 
     // Обновляем все сообщения ивента
-    await updateAllEventMessages(channel_id, { ...eventData, participants });
+    await updateAllEventMessages(channel_id, updatedEventData);
 
     // Отправляем эфемерное сообщение
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: `✅ Your registration for ${eventData.title} has been cancelled.`,
+        content: `✅ Your registration for ${updatedEventData.title} has been cancelled.`,
         flags: 64
       }
     });
