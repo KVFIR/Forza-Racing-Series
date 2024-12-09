@@ -229,7 +229,7 @@ async function handleModalSubmit(req, res) {
       throw new Error('Event not found');
     }
 
-    const { eventKey, eventData } = event;
+    const { eventKey } = event;
     const participant = {
       id: userId,
       username,
@@ -239,7 +239,7 @@ async function handleModalSubmit(req, res) {
     };
 
     // Добавляем участника и получаем обновленные данные
-    const { eventData: updatedEventData, participants } = await eventService.addParticipant(eventKey, participant);
+    const { eventData: updatedEventData } = await eventService.addParticipant(eventKey, participant);
     await eventService.updateMessageIds(eventKey, messageId);
 
     // Добавляем роль
