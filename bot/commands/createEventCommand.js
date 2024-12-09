@@ -9,48 +9,6 @@ import { eventService } from '../services/eventService.js';
 import { logService } from '../services/logService.js';
 import { roleService } from '../services/roleService.js';
 
-// Функция для публикации сообщения в канал
-async function publishMessage(channelId, messageId) {
-  try {
-    await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}/crosspost`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    });
-  } catch (error) {
-    console.error('Error publishing message:', error);
-  }
-}
-
-// Функция для проверки прав бота в канале
-async function checkChannelPermissions(channelId) {
-  try {
-    const response = await fetch(`https://discord.com/api/v10/channels/${channelId}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch channel info');
-    }
-
-    const channel = await response.json();
-    console.log('Channel info:', {
-      id: channel.id,
-      name: channel.name,
-      type: channel.type
-    });
-    return channel;
-  } catch (error) {
-    console.error('Error checking channel permissions:', error);
-    throw new Error('Failed to check channel permissions');
-  }
-}
-
 // Создание события
 export async function handleCreateEvent(req, res) {
   const { guild_id, channel_id, id } = req.body;
@@ -108,7 +66,7 @@ Need help? Contact server administrators.`,
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: "⚠️ Cannot send messages to this channel. Please check bot permissions or use a different channel.",
+          content: "⚠️ Cannot send messages to this channel. Please check bot permissions or use a different channel type.",
           flags: 64
         }
       });
@@ -289,7 +247,7 @@ async function handleModalSubmit(req, res) {
       await roleService.addRoleToUser(guild_id, userId, updatedEventData.role_id);
     } catch (error) {
       console.error('Error adding role:', error);
-      // Пр��должаем выполнение, даже если не удалось добавить роль
+      // Продолжаем выполнение, даже если не удалось добавить роль
     }
 
     // Отправляем лог
@@ -369,7 +327,7 @@ export async function handleCancelRegistration(req, res) {
 
     // Затем выполняем все остальные операции
     try {
-      // Удаляем участника и получаем обновленные данные
+      // Удаляем ��частника и получаем обновленные данные
       const { eventData: updatedEventData } = await eventService.removeParticipant(eventKey, userId);
 
       // Удаляем роль
