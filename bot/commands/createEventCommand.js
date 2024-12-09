@@ -56,20 +56,6 @@ export async function handleCreateEvent(req, res) {
   const { guild_id, channel_id, id } = req.body;
 
   try {
-    // Проверяем канал и права бота
-    const channel = await checkChannelPermissions(channel_id);
-    
-    // Проверяем тип канала (0 - текстовый канал, 5 - канал объявлений)
-    if (channel.type !== 0) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: "⚠️ Events can only be created in regular text channels.",
-          flags: 64
-        }
-      });
-    }
-
     // Проверяем, настроена ли роль участника
     const rolesRef = ref(db, `guild_roles/${guild_id}`);
     const rolesSnapshot = await get(rolesRef);
@@ -99,6 +85,7 @@ Need help? Contact server administrators.`,
     };
 
     // Пробуем отправить сообщение
+    console.log('Attempting to send message to channel:', channel_id);
     const messageResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages`, {
       method: 'POST',
       headers: {
@@ -112,7 +99,12 @@ Need help? Contact server administrators.`,
     });
 
     if (!messageResponse.ok) {
-      console.error('Failed to send message:', await messageResponse.text());
+      const errorText = await messageResponse.text();
+      console.error('Failed to send message:', {
+        status: messageResponse.status,
+        statusText: messageResponse.statusText,
+        error: errorText
+      });
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -123,6 +115,7 @@ Need help? Contact server administrators.`,
     }
 
     const message = await messageResponse.json();
+    console.log('Message sent successfully:', message.id);
 
     // Если сообщение успешно отправлено, создаем событие
     const { eventKey } = await eventService.createEvent(guild_id, channel_id, id, eventData);
@@ -143,14 +136,14 @@ Need help? Contact server administrators.`,
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: "⚠️ Failed to create event. Please check bot permissions or try again later.",
+        content: "⚠️ Failed to create event. Please try again later.",
         flags: 64
       }
     });
   }
 }
 
-// Функция создания мо��ального окна для регистрации
+// Функция создания модального окна для регистрации
 function createRegistrationModal(customId) {
   return {
     type: 9,
@@ -287,7 +280,7 @@ async function handleModalSubmit(req, res) {
       car_choice: components[2].components[0].value
     };
 
-    // Добавляем участника и получа��м обновленные данные
+    // Добавляем участника и получаем обновленные данные
     const { eventData: updatedEventData, participants } = await eventService.addParticipant(eventKey, participant);
     await eventService.updateMessageIds(eventKey, messageId);
 
