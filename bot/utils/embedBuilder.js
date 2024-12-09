@@ -31,7 +31,7 @@ export function createEventEmbed(data) {
       },
       {
         name: "🛣️ Tracks",
-        value: `TBA`
+        value: `[Track #1](https://discord.com/channels/983016177146155069/1315318752598036532)\n[Track #2](https://discord.com/channels/983016177146155069/1315319996255305779)\n[Track #3](https://discord.com/channels/983016177146155069/1315324661105688586)`
       },
       {
         name: `👥 Participants (${participants.length}/${data.max_participants})`,
