@@ -39,6 +39,11 @@ async function checkChannelPermissions(channelId) {
     }
 
     const channel = await response.json();
+    console.log('Channel info:', {
+      id: channel.id,
+      name: channel.name,
+      type: channel.type
+    });
     return channel;
   } catch (error) {
     console.error('Error checking channel permissions:', error);
@@ -54,12 +59,12 @@ export async function handleCreateEvent(req, res) {
     // Проверяем канал и права бота
     const channel = await checkChannelPermissions(channel_id);
     
-    // Если это канал объявлений, проверяем права на публикацию
-    if (channel.type === 5) { // 5 - это тип канала объявлений
+    // Проверяем тип канала (0 - текстовый канал, 5 - канал объявлений)
+    if (channel.type !== 0) {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: "⚠️ Cannot create event in announcement channel. Please use a regular text channel instead.",
+          content: "⚠️ Events can only be created in regular text channels.",
           flags: 64
         }
       });
@@ -107,6 +112,7 @@ Need help? Contact server administrators.`,
     });
 
     if (!messageResponse.ok) {
+      console.error('Failed to send message:', await messageResponse.text());
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -144,7 +150,7 @@ Need help? Contact server administrators.`,
   }
 }
 
-// Функция создания модального окна для регистрации
+// Функция создания мо��ального окна для регистрации
 function createRegistrationModal(customId) {
   return {
     type: 9,
@@ -281,7 +287,7 @@ async function handleModalSubmit(req, res) {
       car_choice: components[2].components[0].value
     };
 
-    // Добавляем участника и получаем обновленные данные
+    // Добавляем участника и получа��м обновленные данные
     const { eventData: updatedEventData, participants } = await eventService.addParticipant(eventKey, participant);
     await eventService.updateMessageIds(eventKey, messageId);
 
