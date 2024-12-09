@@ -289,7 +289,7 @@ async function handleModalSubmit(req, res) {
       await roleService.addRoleToUser(guild_id, userId, updatedEventData.role_id);
     } catch (error) {
       console.error('Error adding role:', error);
-      // Продолжаем выполнение, даже если не удалось добавить роль
+      // Пр��должаем выполнение, даже если не удалось добавить роль
     }
 
     // Отправляем лог
@@ -358,33 +358,39 @@ export async function handleCancelRegistration(req, res) {
       return res.send(createErrorResponse('You are not registered for this event.'));
     }
 
-    // Удаляем участника и получаем обновленные данные
-    const { eventData: updatedEventData } = await eventService.removeParticipant(eventKey, userId);
-
-    // Удаляем роль
-    try {
-      await roleService.removeRoleFromUser(guild_id, userId, updatedEventData.role_id);
-    } catch (error) {
-      console.error('Error removing role:', error);
-      // Продолжаем выполнение, даже если не удалось удалить роль
-    }
-
-    // Отправляем лог
-    await logService.logRegistrationCancelled(guild_id, participant, updatedEventData);
-
-    // Обновляем все сообщения ивента
-    await updateAllEventMessages(channel_id, updatedEventData);
-
-    // Отправляем эфемерное сообщение
-    return res.send({
+    // Сначала отправляем ответ
+    res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: `✅ Your registration for ${updatedEventData.title} has been cancelled.`,
+        content: `✅ Your registration for ${eventData.title} has been cancelled.`,
         flags: 64
       }
     });
 
+    // Затем выполняем все остальные операции
+    try {
+      // Удаляем участника и получаем обновленные данные
+      const { eventData: updatedEventData } = await eventService.removeParticipant(eventKey, userId);
+
+      // Удаляем роль
+      try {
+        await roleService.removeRoleFromUser(guild_id, userId, updatedEventData.role_id);
+      } catch (error) {
+        console.error('Error removing role:', error);
+      }
+
+      // Отправляем лог
+      await logService.logRegistrationCancelled(guild_id, participant, updatedEventData);
+
+      // Обновляем все сообщения ивента
+      await updateAllEventMessages(channel_id, updatedEventData);
+    } catch (error) {
+      console.error('Error processing cancellation:', error);
+      await logService.logError(guild_id, 'handleCancelRegistration', error);
+    }
+
   } catch (error) {
+    console.error('Error in handleCancelRegistration:', error);
     await logService.logError(guild_id, 'handleCancelRegistration', error);
     return res.send(createErrorResponse(
       'Failed to cancel registration. Please try again later.'
