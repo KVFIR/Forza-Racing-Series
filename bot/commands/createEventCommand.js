@@ -9,6 +9,21 @@ import { eventService } from '../services/eventService.js';
 import { logService } from '../services/logService.js';
 import { roleService } from '../services/roleService.js';
 
+// Функция для публикации сообщения в канал
+async function publishMessage(channelId, messageId) {
+  try {
+    await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}/crosspost`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (error) {
+    console.error('Error publishing message:', error);
+  }
+}
+
 // Создание события
 export async function handleCreateEvent(req, res) {
   const { guild_id, channel_id, id } = req.body;
@@ -45,13 +60,39 @@ Need help? Contact server administrators.`,
     const { eventKey } = await eventService.createEvent(guild_id, channel_id, id, eventData);
     await logService.logEventCreated(guild_id, eventData);
 
+    // Отправляем сообщение и получаем его ID
+    const response = await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        embeds: [createEventEmbed(eventData)],
+        components: [createEventButtons()]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to send message');
+    }
+
+    const message = await response.json();
+    
+    // Обновляем список ID сообщений в событии
+    await eventService.updateMessageIds(eventKey, message.id);
+
+    // Публикуем сообщение, если это канал объявлений
+    await publishMessage(channel_id, message.id);
+
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        embeds: [createEventEmbed(eventData)],
-        components: [createEventButtons()]
+        content: "✅ Event created successfully!",
+        flags: 64 // Эфемерное сообщение
       }
     });
+
   } catch (error) {
     await logService.logError(guild_id, 'handleCreateEvent', error);
     return res.send(createErrorResponse(
