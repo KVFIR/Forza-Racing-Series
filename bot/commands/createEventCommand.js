@@ -24,11 +24,47 @@ async function publishMessage(channelId, messageId) {
   }
 }
 
+// Функция для проверки прав бота в канале
+async function checkChannelPermissions(channelId) {
+  try {
+    const response = await fetch(`https://discord.com/api/v10/channels/${channelId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch channel info');
+    }
+
+    const channel = await response.json();
+    return channel;
+  } catch (error) {
+    console.error('Error checking channel permissions:', error);
+    throw new Error('Failed to check channel permissions');
+  }
+}
+
 // Создание события
 export async function handleCreateEvent(req, res) {
   const { guild_id, channel_id, id } = req.body;
 
   try {
+    // Проверяем канал и права бота
+    const channel = await checkChannelPermissions(channel_id);
+    
+    // Если это канал объявлений, проверяем права на публикацию
+    if (channel.type === 5) { // 5 - это тип канала объявлений
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "⚠️ Cannot create event in announcement channel. Please use a regular text channel instead.",
+          flags: 64
+        }
+      });
+    }
+
     // Проверяем, настроена ли роль участника
     const rolesRef = ref(db, `guild_roles/${guild_id}`);
     const rolesSnapshot = await get(rolesRef);
@@ -46,7 +82,7 @@ Please follow these steps:
 3. Try creating the event again
 
 Need help? Contact server administrators.`,
-          flags: 64 // Эфемерное сообщение
+          flags: 64
         }
       });
     }
@@ -57,11 +93,8 @@ Need help? Contact server administrators.`,
       role_id: participantRoleId
     };
 
-    const { eventKey } = await eventService.createEvent(guild_id, channel_id, id, eventData);
-    await logService.logEventCreated(guild_id, eventData);
-
-    // Отправляем сообщение и получаем его ID
-    const response = await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages`, {
+    // Пробуем отправить сообщение
+    const messageResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages`, {
       method: 'POST',
       headers: {
         Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
@@ -73,31 +106,41 @@ Need help? Contact server administrators.`,
       })
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to send message');
+    if (!messageResponse.ok) {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "⚠️ Cannot send messages to this channel. Please check bot permissions or use a different channel.",
+          flags: 64
+        }
+      });
     }
 
-    const message = await response.json();
-    
-    // Обновляем список ID сообщений в событии
-    await eventService.updateMessageIds(eventKey, message.id);
+    const message = await messageResponse.json();
 
-    // Публикуем сообщение, если это канал объявлений
-    await publishMessage(channel_id, message.id);
+    // Если сообщение успешно отправлено, создаем событие
+    const { eventKey } = await eventService.createEvent(guild_id, channel_id, id, eventData);
+    await eventService.updateMessageIds(eventKey, message.id);
+    await logService.logEventCreated(guild_id, eventData);
 
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
         content: "✅ Event created successfully!",
-        flags: 64 // Эфемерное сообщение
+        flags: 64
       }
     });
 
   } catch (error) {
+    console.error('Error in handleCreateEvent:', error);
     await logService.logError(guild_id, 'handleCreateEvent', error);
-    return res.send(createErrorResponse(
-      "Failed to create event. Please try again later or contact administrators."
-    ));
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "⚠️ Failed to create event. Please check bot permissions or try again later.",
+        flags: 64
+      }
+    });
   }
 }
 
