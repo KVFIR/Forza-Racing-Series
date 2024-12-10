@@ -229,7 +229,7 @@ async function handleModalSubmit(req, res) {
       throw new Error('Event not found');
     }
 
-    const { eventKey } = event;
+    const { eventKey, eventData } = event;
     const participant = {
       id: userId,
       username,
@@ -238,40 +238,46 @@ async function handleModalSubmit(req, res) {
       car_choice: components[2].components[0].value
     };
 
-    // Добавляем участника и получаем обновленные данные
-    const { eventData: updatedEventData } = await eventService.addParticipant(eventKey, participant);
-    await eventService.updateMessageIds(eventKey, messageId);
-
-    // Добавляем роль
-    try {
-      await roleService.addRoleToUser(guild_id, userId, updatedEventData.role_id);
-    } catch (error) {
-      console.error('Error adding role:', error);
-      // Продолжаем выполнение, даже если не удалось добавить роль
-    }
-
-    // Отправляем лог
-    try {
-      await logService.logRegistration(guild_id, updatedEventData, participant);
-    } catch (error) {
-      console.error('Error sending log:', error);
-    }
-
-    // Обновляем все сообщения ивента
-    await updateAllEventMessages(channel_id, updatedEventData);
-
-    // Отправляем эфемерное сообщение
-    return res.send({
+    // Сначала отправляем ответ пользователю
+    res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: `✅ Successfully registered for ${updatedEventData.title}!
+        content: `✅ Successfully registered for ${eventData.title}!
 Your XBOX Gamertag: ${participant.xbox_nickname}
 Your Car: ${participant.car_choice}`,
         flags: 64
       }
     });
 
+    // Затем выполняем все остальные операции
+    try {
+      // Добавляем участника и получаем обновленные данные
+      const { eventData: updatedEventData } = await eventService.addParticipant(eventKey, participant);
+      await eventService.updateMessageIds(eventKey, messageId);
+
+      // Добавляем роль
+      try {
+        await roleService.addRoleToUser(guild_id, userId, updatedEventData.role_id);
+      } catch (error) {
+        console.error('Error adding role:', error);
+      }
+
+      // Отправляем лог
+      try {
+        await logService.logRegistration(guild_id, updatedEventData, participant);
+      } catch (error) {
+        console.error('Error sending log:', error);
+      }
+
+      // Обновляем все сообщения ивента
+      await updateAllEventMessages(channel_id, updatedEventData);
+    } catch (error) {
+      console.error('Error processing registration:', error);
+      await logService.logError(guild_id, 'handleModalSubmit', error);
+    }
+
   } catch (error) {
+    console.error('Error in handleModalSubmit:', error);
     await logService.logError(guild_id, 'handleModalSubmit', error);
     return res.send(createErrorResponse(
       error.message === 'Event not found' 
@@ -327,7 +333,7 @@ export async function handleCancelRegistration(req, res) {
 
     // Затем выполняем все остальные операции
     try {
-      // Удаляем ��частника и получаем обновленные данные
+      // Удаляем участника и получаем обновленные данные
       const { eventData: updatedEventData } = await eventService.removeParticipant(eventKey, userId);
 
       // Удаляем роль
