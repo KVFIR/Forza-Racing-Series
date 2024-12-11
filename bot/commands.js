@@ -32,7 +32,7 @@ async function cleanupCommands() {
       return;
     }
 
-    // Создаем новый ��писок команд
+    // Создаем новый список команд
     const commands = [
       entryPointCommand,
       {
@@ -104,6 +104,21 @@ async function cleanupCommands() {
             name: 'participant',
             description: 'Role for Event Participants',
             type: 8,
+            required: true
+          }
+        ]
+      },
+      {
+        name: 'recreate_event',
+        description: 'Create a new event announcement based on existing one',
+        type: 1,
+        default_member_permissions: "8",
+        dm_permission: false,
+        options: [
+          {
+            name: 'message_id',
+            description: 'ID of the existing event message',
+            type: 3,
             required: true
           }
         ]
