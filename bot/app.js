@@ -9,7 +9,7 @@ import {
 import { getUser, createUser } from './database.js';
 import { db } from './firebase.js';
 import { ref, set } from 'firebase/database';
-import { handleTest, handleCreateEvent } from './commands/index.js';
+import { handleTest, handleCreateEvent, handleUpdateEvent } from './commands/index.js';
 import { handleLogging } from './commands/loggingCommand.js';
 import { 
   handleCreateTicketButton, 
@@ -121,6 +121,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             return handleTest(req, res);
           case 'create_event':
             return handleCreateEvent(req, res);
+          case 'update_event':
+            return handleUpdateEvent(req, res);
           case 'logging':
             return handleLogging(req, res);
           case 'create_ticket_button':
@@ -158,7 +160,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     }
 
-    // Обработка модальных окон
+    // Обработка модал��ных окон
     if (type === InteractionType.MODAL_SUBMIT) {
       const { custom_id } = data;
       
