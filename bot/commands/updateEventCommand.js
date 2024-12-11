@@ -39,7 +39,10 @@ export async function handleUpdateEvent(req, res) {
 
       const requestBody = {
         embeds: [embed],
-        components: [buttons]
+        components: [buttons],
+        allowed_mentions: {
+          parse: ["users"]
+        }
       };
 
       console.log('Sending update request:', {

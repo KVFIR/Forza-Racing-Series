@@ -10,7 +10,7 @@ export function createEventEmbed(data) {
 
   const participants = data.participants || [];
   const participantsList = participants.length > 0
-    ? participants.map(p => `<@${p.id}>`).join('\n')
+    ? participants.map(p => `<@${p.id}> (${p.username})`).join('\n')
     : 'No registered participants';
 
   console.log('Participants list:', {
@@ -50,7 +50,10 @@ export function createEventEmbed(data) {
         name: `👥 Participants (${participants.length}/${data.max_participants})`,
         value: participantsList
       }
-    ]
+    ],
+    allowed_mentions: {
+      parse: ["users"]
+    }
   };
 
   console.log('Created embed:', {
