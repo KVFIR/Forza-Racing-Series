@@ -34,6 +34,31 @@ export async function handleRecreateEvent(req, res) {
 
     // Создаем новое сообщение
     try {
+      // Проверяем права бота в канале
+      const channelResponse = await fetch(`https://discord.com/api/v10/channels/${channel_id}`, {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+        }
+      });
+      
+      if (!channelResponse.ok) {
+        console.error('Failed to get channel info:', await channelResponse.text());
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: "⚠️ Failed to check channel permissions. Please try again later.",
+            flags: 64
+          }
+        });
+      }
+
+      const channel = await channelResponse.json();
+      console.log('Channel info:', {
+        id: channel.id,
+        name: channel.name,
+        permissions: channel.permission_overwrites
+      });
+
       const embed = createEventEmbed(eventData);
       const buttons = createEventButtons();
 

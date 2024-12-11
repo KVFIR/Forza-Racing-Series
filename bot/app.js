@@ -105,7 +105,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           });
         }
 
-        // Получаем ли создаем пользоват��ля
+        // Получаем ли создаем пользователя
         let user = await getUser(userId);
         if (!user) {
           await createUser(userId, username);
@@ -180,7 +180,9 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
   } catch (error) {
     console.error('Error processing interaction:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 });
 
