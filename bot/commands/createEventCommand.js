@@ -249,7 +249,7 @@ Your Car: ${participant.car_choice}`,
       }
     });
 
-    // Затем вы��олняем все остальные операции
+    // Затем выполняем все остальные операции
     try {
       console.log('Starting registration process for user:', userId);
 
@@ -377,8 +377,7 @@ async function updateAllEventMessages(channelId, eventData) {
   console.log('Starting updateAllEventMessages with data:', {
     channelId,
     messageIds: eventData.message_ids,
-    participantsCount: eventData.participants?.length || 0,
-    participants: eventData.participants
+    participantsCount: eventData.participants?.length || 0
   });
 
   if (!eventData.message_ids || eventData.message_ids.length === 0) {
@@ -398,6 +397,31 @@ async function updateAllEventMessages(channelId, eventData) {
     const updatePromises = eventData.message_ids.map(async messageId => {
       try {
         console.log(`Updating message ${messageId}`);
+
+        // Сначала получаем текущее сообщение
+        const getMessage = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+          }
+        });
+
+        if (!getMessage.ok) {
+          console.error(`Failed to get message ${messageId}:`, {
+            status: getMessage.status,
+            statusText: getMessage.statusText
+          });
+          return false;
+        }
+
+        const currentMessage = await getMessage.json();
+        console.log('Current message data:', {
+          id: currentMessage.id,
+          embeds: currentMessage.embeds?.length,
+          components: currentMessage.components?.length
+        });
+
+        // Теперь обновляем сообщение
         const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
           method: 'PATCH',
           headers: {
@@ -405,8 +429,10 @@ async function updateAllEventMessages(channelId, eventData) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            content: currentMessage.content || '',
             embeds: [embed],
-            components: [buttons]
+            components: [buttons],
+            allowed_mentions: { parse: ['users'] }
           })
         });
 
@@ -425,7 +451,9 @@ async function updateAllEventMessages(channelId, eventData) {
         const updatedMessage = await response.json();
         console.log(`Successfully updated message ${messageId}:`, {
           id: updatedMessage.id,
-          embeds: updatedMessage.embeds?.length
+          embeds: updatedMessage.embeds?.length,
+          components: updatedMessage.components?.length,
+          content: updatedMessage.content ? 'has content' : 'no content'
         });
         return true;
       } catch (error) {
