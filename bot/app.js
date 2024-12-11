@@ -21,6 +21,7 @@ import {
 import { handleContextCommand } from './contextActions/index.js';
 
 const app = express();
+const port = process.env.PORT || 8080;
 
 // Добавляем middleware для парсинга JSON
 app.use(express.json());
@@ -153,25 +154,17 @@ app.post('/interactions', async function(req, res) {
   }
 });
 
-// Оборачиваем инициализацию в асинхронную функцию
+// Инициализация Firebase
 async function initializeApp() {
-  // Test Firebase connection
-  const testRef = ref(db, 'test');
   try {
-    await set(testRef, { test: 'Connection successful' });
-    console.log('Firebase connection successful');
+    console.log('Firebase initialized successfully');
+    app.listen(port, () => {
+      console.log('Firebase connection successful');
+      console.log(`Listening on port ${port}`);
+    });
   } catch (error) {
-    console.error('Firebase connection error:', error);
+    console.error('Failed to initialize app:', error);
   }
-
-  // Start the server
-  app.listen(PORT, () => {
-    console.log('Listening on port', PORT);
-  });
 }
 
-// Запускаем инициализацию
-initializeApp().catch(error => {
-  console.error('Failed to initialize app:', error);
-  process.exit(1);
-});
+initializeApp();
