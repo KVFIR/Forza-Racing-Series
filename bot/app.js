@@ -16,9 +16,9 @@ import {
   handleTest,
   handleCreateEvent,
   handleRegisterEvent,
-  handleCancelRegistration,
-  handleEventParticipants
+  handleCancelRegistration
 } from './commands/index.js';
+import { handleContextCommand } from './commands/contextCommands.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -72,106 +72,63 @@ app.get('/metrics', (req, res) => {
 const ADMINISTRATOR_PERMISSION = BigInt(0x8);
 
 // Interactions endpoint
-app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
+app.post('/interactions', async function(req, res) {
   const { type, data } = req.body;
 
-  // Увеличиваем счетчик команд для метрик
-  totalCommands++;
-
   try {
-    // Обработка PING
     if (type === InteractionType.PING) {
       return res.send({ type: InteractionResponseType.PONG });
     }
 
-    // Обработка команд
     if (type === InteractionType.APPLICATION_COMMAND) {
-      const { name } = data;
-      const userId = req.body.member.user.id;
-      const username = req.body.member.user.username;
-      const memberPermissions = BigInt(req.body.member.permissions);
+      const { name, type: commandType } = data;
       
-      try {
-        // Проверяем права администратора для определенных команд
-        const adminOnlyCommands = ['setup_roles', 'logging', 'create_ticket_button', 'create_event'];
-        if (adminOnlyCommands.includes(name) && !(memberPermissions & ADMINISTRATOR_PERMISSION)) {
+      // Обработка контекстных команд сообщений
+      if (commandType === 3) { // MESSAGE type commands
+        return handleContextCommand(req, res);
+      }
+
+      // Обработка обычных слэш-команд
+      switch (name) {
+        case 'test':
+          return handleTest(req, res);
+        case 'create_event':
+          return handleCreateEvent(req, res);
+        case 'logging':
+          return handleLogging(req, res);
+        case 'setup_roles':
+          return handleSetupRoles(req, res);
+        default:
+          console.error(`Unknown command: ${name}`);
           return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
-              content: "❌ You need administrator permissions to use this command.",
-              flags: 64 // Делает сообщение видимым только для отправителя
+              content: "Unknown command",
+              flags: 64
             }
           });
-        }
-
-        // Получаем ли создаем пользователя
-        let user = await getUser(userId);
-        if (!user) {
-          await createUser(userId, username);
-          user = { score: 0 };
-        }
-
-        switch (name) {
-          case 'test':
-            return handleTest(req, res);
-          case 'create_event':
-            return handleCreateEvent(req, res);
-          case 'event_participants':
-            return handleEventParticipants(req, res);
-          case 'logging':
-            return handleLogging(req, res);
-          case 'create_ticket_button':
-            return handleCreateTicketButton(req, res);
-          case 'setup_roles':
-            return handleSetupRoles(req, res);
-          default:
-            console.error(`Unknown command: ${name}`);
-            return res.status(400).json({ error: 'Unknown command' });
-        }
-      } catch (error) {
-        console.error('Error handling command:', error);
-        return res.status(500).json({ error: 'Internal server error' });
       }
     }
 
-    // Обработка компонентов (кнопки)
     if (type === InteractionType.MESSAGE_COMPONENT) {
       const { custom_id } = data;
       
-      if (custom_id === 'create_incident_ticket') {
-        return handleShowTicketModal(req, res);
-      }
-      else if (custom_id.startsWith('close_ticket_')) {
-        return handleCloseTicket(req, res);
-      } 
-      else if (custom_id.startsWith('verdict_ticket_')) {
-        return handleShowVerdictModal(req, res);
-      }
-      else if (custom_id === 'register_event') {
-        return handleRegisterEvent(req, res);
-      }
-      else if (custom_id === 'cancel_registration') {
-        return handleCancelRegistration(req, res);
-      }
-    }
-
-    // Обработка модальных окон
-    if (type === InteractionType.MODAL_SUBMIT) {
-      const { custom_id } = data;
-      
-      if (custom_id.startsWith('ticket_modal_')) {
-        return handleTicketSubmit(req, res);
-      }
-      else if (custom_id.startsWith('verdict_modal_')) {
-        return handleVerdictSubmit(req, res);
-      }
-      else if (custom_id.startsWith('register_modal_')) {
-        return handleRegisterEvent(req, res);
+      switch (custom_id) {
+        case 'register_event':
+          return handleRegisterEvent(req, res);
+        case 'cancel_registration':
+          return handleCancelRegistration(req, res);
+        default:
+          console.error(`Unknown component interaction: ${custom_id}`);
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: "Unknown interaction",
+              flags: 64
+            }
+          });
       }
     }
-
-    // Если дошли до сюда - неизвестный тип взаимодействия
-    return res.status(400).json({ error: 'Unknown interaction type' });
 
   } catch (error) {
     console.error('Error processing interaction:', error);
