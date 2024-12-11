@@ -9,20 +9,14 @@ import {
 import { getUser, createUser } from './database.js';
 import { db } from './firebase.js';
 import { ref, set } from 'firebase/database';
-import { handleTest, handleCreateEvent, handleUpdateEvent } from './commands/index.js';
 import { handleLogging } from './commands/loggingCommand.js';
-import { 
-  handleCreateTicketButton, 
-  handleShowTicketModal, 
-  handleTicketSubmit, 
-  handleCloseTicket, 
-  handleShowVerdictModal, 
-  handleVerdictSubmit 
-} from './commands/ticketCommand.js';
+import { handleCreateTicketButton } from './commands/ticketCommand.js';
 import { handleSetupRoles } from './commands/setupRolesCommand.js';
 import { 
-  handleRegisterEvent, 
-  handleCancelRegistration 
+  handleCreateEvent,
+  handleRegisterEvent,
+  handleCancelRegistration,
+  handleUpdateEvent
 } from './commands/createEventCommand.js';
 
 const app = express();
@@ -109,7 +103,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           });
         }
 
-        // Получаем или создаем пользователя
+        // Получаем ли создаем пользователя
         let user = await getUser(userId);
         if (!user) {
           await createUser(userId, username);
@@ -184,7 +178,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   }
 });
 
-// Оборачиваем инициализацию в асинхронную функцию
+// Оборачиваем инициализацию в асинхронную фун��цию
 async function initializeApp() {
   // Test Firebase connection
   const testRef = ref(db, 'test');
