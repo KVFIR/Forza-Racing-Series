@@ -21,7 +21,12 @@ import {
 import { handleContextCommand } from './contextActions/index.js';
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+
+// Добавляем middleware для парсинга JSON
+app.use(express.json());
+
+// Добавляем middleware для верификации запросов от Discord
+app.use('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY));
 
 // Metrics
 let totalCommands = 0;
@@ -129,6 +134,16 @@ app.post('/interactions', async function(req, res) {
           });
       }
     }
+
+    // Если дошли до сюда - неизвестный тип взаимодействия
+    console.error(`Unknown interaction type: ${type}`);
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "Unknown interaction type",
+        flags: 64
+      }
+    });
 
   } catch (error) {
     console.error('Error processing interaction:', error);
