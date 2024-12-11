@@ -251,13 +251,19 @@ Your Car: ${participant.car_choice}`,
 
     // Затем выполняем все остальные операции
     try {
+      console.log('Starting registration process for user:', userId);
+
       // Добавляем участника и получаем обновленные данные
       const { eventData: updatedEventData } = await eventService.addParticipant(eventKey, participant);
+      console.log('Participant added to event');
+
       await eventService.updateMessageIds(eventKey, messageId);
+      console.log('Message IDs updated');
 
       // Добавляем роль
       try {
         await roleService.addRoleToUser(guild_id, userId, updatedEventData.role_id);
+        console.log('Role added to user');
       } catch (error) {
         console.error('Error adding role:', error);
       }
@@ -265,12 +271,16 @@ Your Car: ${participant.car_choice}`,
       // Отправляем лог
       try {
         await logService.logRegistration(guild_id, updatedEventData, participant);
+        console.log('Registration logged');
       } catch (error) {
         console.error('Error sending log:', error);
       }
 
       // Обновляем все сообщения ивента
+      console.log('Starting message updates');
       await updateAllEventMessages(channel_id, updatedEventData);
+      console.log('All messages updated');
+
     } catch (error) {
       console.error('Error processing registration:', error);
       await logService.logError(guild_id, 'handleModalSubmit', error);
@@ -365,22 +375,48 @@ export async function handleCancelRegistration(req, res) {
 // Функция для обновления всех сообщений ивента
 async function updateAllEventMessages(channelId, eventData) {
   if (!eventData.message_ids || eventData.message_ids.length === 0) {
+    console.log('No message IDs to update');
     return;
   }
 
-  const updatePromises = eventData.message_ids.map(messageId => 
-    fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        embeds: [createEventEmbed(eventData)],
-        components: [createEventButtons()]
-      })
-    })
-  );
+  console.log('Updating messages:', eventData.message_ids);
 
-  await Promise.all(updatePromises);
+  try {
+    const updatePromises = eventData.message_ids.map(async messageId => {
+      try {
+        const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            embeds: [createEventEmbed(eventData)],
+            components: [createEventButtons()]
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Failed to update message ${messageId}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error(`Error updating message ${messageId}:`, error);
+        return false;
+      }
+    });
+
+    const results = await Promise.all(updatePromises);
+    const successCount = results.filter(Boolean).length;
+    console.log(`Successfully updated ${successCount}/${eventData.message_ids.length} messages`);
+  } catch (error) {
+    console.error('Error in updateAllEventMessages:', error);
+  }
 }
