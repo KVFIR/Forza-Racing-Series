@@ -108,7 +108,7 @@ class LogService {
   }
 
   async logEventUpdated(guildId, eventData) {
-    await this.sendLog(guildId, 
+    await sendLog(guildId, 
       `🔄 **Event Updated**
 > Title: ${eventData.title}
 > Participants: ${eventData.participants?.length || 0}/${eventData.max_participants}`
