@@ -1,12 +1,23 @@
 import { MessageComponentTypes, ButtonStyleTypes } from 'discord-interactions';
 
 export function createEventEmbed(data) {
+  console.log('Creating embed with data:', {
+    title: data.title,
+    participantsCount: data.participants?.length || 0,
+    maxParticipants: data.max_participants
+  });
+
   const participants = data.participants || [];
   const participantsList = participants.length > 0
     ? participants.map(p => `<@${p.id}>`).join('\n')
     : 'No registered participants';
 
-  return {
+  console.log('Participants list:', {
+    count: participants.length,
+    list: participantsList
+  });
+
+  const embed = {
     title: data.title,
     url: "",
     color: 460551,
@@ -39,6 +50,14 @@ export function createEventEmbed(data) {
       }
     ]
   };
+
+  console.log('Created embed:', {
+    title: embed.title,
+    fieldsCount: embed.fields.length,
+    participantsField: embed.fields[3]
+  });
+
+  return embed;
 }
 
 export function createEventButtons() {

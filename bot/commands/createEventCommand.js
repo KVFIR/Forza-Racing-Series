@@ -249,7 +249,7 @@ Your Car: ${participant.car_choice}`,
       }
     });
 
-    // Затем выполняем все остальные операции
+    // Затем вы��олняем все остальные операции
     try {
       console.log('Starting registration process for user:', userId);
 
@@ -374,16 +374,30 @@ export async function handleCancelRegistration(req, res) {
 
 // Функция для обновления всех сообщений ивента
 async function updateAllEventMessages(channelId, eventData) {
+  console.log('Starting updateAllEventMessages with data:', {
+    channelId,
+    messageIds: eventData.message_ids,
+    participantsCount: eventData.participants?.length || 0,
+    participants: eventData.participants
+  });
+
   if (!eventData.message_ids || eventData.message_ids.length === 0) {
     console.log('No message IDs to update');
     return;
   }
 
-  console.log('Updating messages:', eventData.message_ids);
-
   try {
+    const embed = createEventEmbed(eventData);
+    const buttons = createEventButtons();
+    
+    console.log('Created embed with data:', {
+      title: embed.title,
+      participantsField: embed.fields.find(f => f.name.includes('Participants'))
+    });
+
     const updatePromises = eventData.message_ids.map(async messageId => {
       try {
+        console.log(`Updating message ${messageId}`);
         const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
           method: 'PATCH',
           headers: {
@@ -391,8 +405,8 @@ async function updateAllEventMessages(channelId, eventData) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            embeds: [createEventEmbed(eventData)],
-            components: [createEventButtons()]
+            embeds: [embed],
+            components: [buttons]
           })
         });
 
@@ -401,11 +415,18 @@ async function updateAllEventMessages(channelId, eventData) {
           console.error(`Failed to update message ${messageId}:`, {
             status: response.status,
             statusText: response.statusText,
-            error: errorText
+            error: errorText,
+            messageId,
+            channelId
           });
           return false;
         }
 
+        const updatedMessage = await response.json();
+        console.log(`Successfully updated message ${messageId}:`, {
+          id: updatedMessage.id,
+          embeds: updatedMessage.embeds?.length
+        });
         return true;
       } catch (error) {
         console.error(`Error updating message ${messageId}:`, error);
@@ -415,7 +436,7 @@ async function updateAllEventMessages(channelId, eventData) {
 
     const results = await Promise.all(updatePromises);
     const successCount = results.filter(Boolean).length;
-    console.log(`Successfully updated ${successCount}/${eventData.message_ids.length} messages`);
+    console.log(`Update complete: ${successCount}/${eventData.message_ids.length} messages updated`);
   } catch (error) {
     console.error('Error in updateAllEventMessages:', error);
   }

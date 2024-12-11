@@ -58,6 +58,11 @@ class EventService {
    * Add participant to event
    */
   async addParticipant(eventKey, participant) {
+    console.log('Adding participant:', {
+      eventKey,
+      participant
+    });
+
     const eventRef = ref(db, `events/${eventKey}`);
     const snapshot = await get(eventRef);
     
@@ -66,6 +71,12 @@ class EventService {
     }
 
     const eventData = snapshot.val();
+    console.log('Current event data:', {
+      title: eventData.title,
+      participantsCount: eventData.participants?.length || 0,
+      messageIds: eventData.message_ids
+    });
+
     const participants = eventData.participants || [];
     
     if (participants.some(p => p.id === participant.id)) {
@@ -82,6 +93,11 @@ class EventService {
       participants
     };
 
+    console.log('Updating event with new data:', {
+      participantsCount: participants.length,
+      lastParticipant: participant.username
+    });
+
     await set(eventRef, updatedEventData);
 
     return { eventData: updatedEventData, participants };
@@ -91,6 +107,11 @@ class EventService {
    * Remove participant from event
    */
   async removeParticipant(eventKey, userId) {
+    console.log('Removing participant:', {
+      eventKey,
+      userId
+    });
+
     const eventRef = ref(db, `events/${eventKey}`);
     const snapshot = await get(eventRef);
     
@@ -99,6 +120,12 @@ class EventService {
     }
 
     const eventData = snapshot.val();
+    console.log('Current event data:', {
+      title: eventData.title,
+      participantsCount: eventData.participants?.length || 0,
+      messageIds: eventData.message_ids
+    });
+
     const participants = eventData.participants || [];
     
     const updatedParticipants = participants.filter(p => p.id !== userId);
@@ -111,6 +138,10 @@ class EventService {
       ...eventData,
       participants: updatedParticipants
     };
+
+    console.log('Updating event with new data:', {
+      participantsCount: updatedParticipants.length
+    });
 
     await set(eventRef, updatedEventData);
 
