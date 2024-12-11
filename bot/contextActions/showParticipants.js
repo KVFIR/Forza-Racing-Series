@@ -44,7 +44,7 @@ export async function handleEventParticipants(req, res) {
 
     // Формируем список участников
     participants.forEach((p, index) => {
-      const twitchInfo = p.twitch_username ? `[${p.twitch_username}](https://twitch.tv/${p.twitch_username})` : 'N/A';
+      const twitchInfo = p.twitch_username ? `[${p.twitch_username}](<https://twitch.tv/${p.twitch_username}>)` : 'N/A';
       message += `${index + 1}. <@${p.id}>\n`;
       message += `   • Xbox: ${p.xbox_nickname}\n`;
       message += `   • Twitch: ${twitchInfo}\n`;
