@@ -18,7 +18,7 @@ import {
   handleRegisterEvent,
   handleCancelRegistration
 } from './commands/index.js';
-import { handleContextCommand } from './commands/contextCommands.js';
+import { handleContextCommand } from './contextActions/index.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;

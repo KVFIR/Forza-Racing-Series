@@ -2,8 +2,9 @@ import { InteractionResponseType } from 'discord-interactions';
 import { eventService } from '../services/eventService.js';
 
 export async function handleEventParticipants(req, res) {
-  const { guild_id, channel_id } = req.body;
-  const messageId = req.body.data.options.find(opt => opt.name === 'message_id')?.value;
+  const { guild_id } = req.body;
+  const targetMessage = req.body.data.resolved.messages[Object.keys(req.body.data.resolved.messages)[0]];
+  const { id: messageId, channel_id } = targetMessage;
 
   try {
     console.log('Handling event participants command:', {

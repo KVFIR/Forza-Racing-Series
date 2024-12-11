@@ -1,7 +1,7 @@
 import { InteractionResponseType } from 'discord-interactions';
 import { eventService } from '../services/eventService.js';
-import { handleUpdateEvent } from './updateEventCommand.js';
-import { handleEventParticipants } from './eventParticipantsCommand.js';
+import { handleUpdateEvent } from './updateEvent.js';
+import { handleEventParticipants } from './showParticipants.js';
 
 export async function handleContextCommand(req, res) {
   const { name, resolved } = req.body.data;
