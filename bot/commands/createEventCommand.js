@@ -9,8 +9,15 @@ import { eventService } from '../services/eventService.js';
 import { logService } from '../services/logService.js';
 import { roleService } from '../services/roleService.js';
 
+export {
+  handleCreateEvent,
+  handleRegisterEvent,
+  handleCancelRegistration,
+  handleUpdateEvent
+};
+
 // Создание события
-export async function handleCreateEvent(req, res) {
+async function handleCreateEvent(req, res) {
   const { guild_id, channel_id, id } = req.body;
 
   try {
@@ -298,7 +305,7 @@ Your Car: ${participant.car_choice}`,
 }
 
 // Основной обработчик регистрации
-export async function handleRegisterEvent(req, res) {
+async function handleRegisterEvent(req, res) {
   const { type } = req.body;
   console.log('handleRegisterEvent called with type:', type);
 
@@ -314,7 +321,7 @@ export async function handleRegisterEvent(req, res) {
 }
 
 // Обработчик отмены регистрации
-export async function handleCancelRegistration(req, res) {
+async function handleCancelRegistration(req, res) {
   const { guild_id, member: { user: { id: userId } }, message: { id: messageId }, channel_id } = req.body;
 
   try {
@@ -353,7 +360,7 @@ export async function handleCancelRegistration(req, res) {
         console.error('Error removing role:', error);
       }
 
-      // Отправляем лог
+      // Отпр��вляем лог
       await logService.logRegistrationCancelled(guild_id, participant, updatedEventData);
 
       // Обновляем все сообщения ивента
@@ -477,7 +484,7 @@ async function updateAllEventMessages(channelId, eventData) {
 }
 
 // Обработчик команды обновления события
-export async function handleUpdateEvent(req, res) {
+async function handleUpdateEvent(req, res) {
   const { guild_id, channel_id } = req.body;
   const messageId = req.body.data.options.find(opt => opt.name === 'message_id')?.value;
 

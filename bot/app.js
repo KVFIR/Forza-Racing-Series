@@ -160,7 +160,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     }
 
-    // Обработка модал��ных окон
+    // Обработка модальных окон
     if (type === InteractionType.MODAL_SUBMIT) {
       const { custom_id } = data;
       
