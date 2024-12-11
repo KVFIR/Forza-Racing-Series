@@ -4,4 +4,3 @@ export {
     handleRegisterEvent,
     handleCancelRegistration
 } from './createEventCommand.js';
-export { handleEventParticipants } from './eventParticipantsCommand.js';
