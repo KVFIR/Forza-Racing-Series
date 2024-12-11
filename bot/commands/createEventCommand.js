@@ -12,8 +12,7 @@ import { roleService } from '../services/roleService.js';
 export {
   handleCreateEvent,
   handleRegisterEvent,
-  handleCancelRegistration,
-  handleUpdateEvent
+  handleCancelRegistration
 };
 
 // Создание события
@@ -360,7 +359,7 @@ async function handleCancelRegistration(req, res) {
         console.error('Error removing role:', error);
       }
 
-      // Отпр��вляем лог
+      // Отправляем лог
       await logService.logRegistrationCancelled(guild_id, participant, updatedEventData);
 
       // Обновляем все сообщения ивента
@@ -480,95 +479,5 @@ async function updateAllEventMessages(channelId, eventData) {
     console.log(`Update complete: ${successCount}/${eventData.message_ids.length} messages updated`);
   } catch (error) {
     console.error('Error in updateAllEventMessages:', error);
-  }
-}
-
-// Обработчик команды обновления события
-async function handleUpdateEvent(req, res) {
-  const { guild_id, channel_id } = req.body;
-  const messageId = req.body.data.options.find(opt => opt.name === 'message_id')?.value;
-
-  try {
-    console.log('Handling update event command:', {
-      guildId: guild_id,
-      channelId: channel_id,
-      messageId
-    });
-
-    // Находим событие
-    const event = await eventService.findEvent(messageId, channel_id);
-    if (!event) {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: "⚠️ Event not found. Please check the message ID.",
-          flags: 64
-        }
-      });
-    }
-
-    const { eventData } = event;
-
-    // Создаем новое сообщение с обновленными данными
-    const newMessage = await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        embeds: [createEventEmbed(eventData)],
-        components: [createEventButtons()]
-      })
-    });
-
-    if (!newMessage.ok) {
-      console.error('Failed to create new message:', await newMessage.text());
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: "⚠️ Failed to create new event announcement. Please check bot permissions.",
-          flags: 64
-        }
-      });
-    }
-
-    const message = await newMessage.json();
-    console.log('New message created:', message.id);
-
-    // Обновляем список ID сообщений в событии
-    await eventService.updateMessageIds(event.eventKey, message.id);
-
-    // Удаляем старое сообщение
-    try {
-      await fetch(`https://discord.com/api/v10/channels/${channel_id}/messages/${messageId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bot ${process.env.DISCORD_TOKEN}`
-        }
-      });
-      console.log('Old message deleted');
-    } catch (error) {
-      console.error('Failed to delete old message:', error);
-    }
-
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: "✅ Event announcement has been updated!",
-        flags: 64
-      }
-    });
-
-  } catch (error) {
-    console.error('Error in handleUpdateEvent:', error);
-    await logService.logError(guild_id, 'handleUpdateEvent', error);
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: "⚠️ Failed to update event. Please try again later.",
-        flags: 64
-      }
-    });
   }
 }

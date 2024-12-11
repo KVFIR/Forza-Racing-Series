@@ -2,6 +2,6 @@ export { handleTest } from './testCommand.js';
 export { 
     handleCreateEvent,
     handleRegisterEvent,
-    handleCancelRegistration,
-    handleUpdateEvent
+    handleCancelRegistration
 } from './createEventCommand.js';
+export { handleUpdateEvent } from './updateEventCommand.js';
