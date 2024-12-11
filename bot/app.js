@@ -17,7 +17,8 @@ import {
   handleCreateEvent,
   handleRegisterEvent,
   handleCancelRegistration,
-  handleUpdateEvent
+  handleUpdateEvent,
+  handleRecreateEvent
 } from './commands/index.js';
 
 const app = express();
@@ -104,7 +105,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           });
         }
 
-        // Получаем ли создаем пользователя
+        // Получаем ли создаем пользоват��ля
         let user = await getUser(userId);
         if (!user) {
           await createUser(userId, username);
@@ -117,13 +118,17 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           case 'create_event':
             return handleCreateEvent(req, res);
           case 'update_event':
-            return handleUpdateEvent(req, res);
+            await handleUpdateEvent(req, res);
+            break;
           case 'logging':
             return handleLogging(req, res);
           case 'create_ticket_button':
             return handleCreateTicketButton(req, res);
           case 'setup_roles':
             return handleSetupRoles(req, res);
+          case 'recreate_event':
+            await handleRecreateEvent(req, res);
+            break;
           default:
             console.error(`Unknown command: ${name}`);
             return res.status(400).json({ error: 'Unknown command' });
