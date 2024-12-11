@@ -403,71 +403,34 @@ async function updateAllEventMessages(channelId, eventData) {
     const updatePromises = eventData.message_ids.map(async messageId => {
       try {
         console.log(`Updating message ${messageId}`);
-
-        // Создаем веб-хук для канала
-        const createWebhook = await fetch(`https://discord.com/api/v10/channels/${channelId}/webhooks`, {
-          method: 'POST',
+        const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
+          method: 'PATCH',
           headers: {
             Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            name: 'Event Update'
+            embeds: [embed],
+            components: [buttons]
           })
         });
 
-        if (!createWebhook.ok) {
-          console.error('Failed to create webhook:', await createWebhook.text());
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Failed to update message ${messageId}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
           return false;
         }
 
-        const webhook = await createWebhook.json();
-        console.log('Created webhook:', {
-          id: webhook.id,
-          token: 'hidden'
+        const updatedMessage = await response.json();
+        console.log(`Successfully updated message ${messageId}:`, {
+          id: updatedMessage.id,
+          embeds: updatedMessage.embeds?.length
         });
-
-        try {
-          // Обновляем сообщение через веб-хук
-          const response = await fetch(`https://discord.com/api/v10/webhooks/${webhook.id}/${webhook.token}/messages/${messageId}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              embeds: [embed],
-              components: [buttons]
-            })
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Failed to update message ${messageId}:`, {
-              status: response.status,
-              statusText: response.statusText,
-              error: errorText
-            });
-            return false;
-          }
-
-          const updatedMessage = await response.json();
-          console.log(`Successfully updated message ${messageId}:`, {
-            id: updatedMessage.id,
-            embeds: updatedMessage.embeds?.length,
-            components: updatedMessage.components?.length
-          });
-
-          return true;
-        } finally {
-          // Удаляем веб-хук после использования
-          await fetch(`https://discord.com/api/v10/webhooks/${webhook.id}`, {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bot ${process.env.DISCORD_TOKEN}`
-            }
-          });
-          console.log('Webhook deleted');
-        }
+        return true;
       } catch (error) {
         console.error(`Error updating message ${messageId}:`, error);
         return false;
