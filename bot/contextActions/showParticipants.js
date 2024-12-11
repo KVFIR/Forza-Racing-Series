@@ -38,23 +38,35 @@ export async function handleEventParticipants(req, res) {
       });
     }
 
-    // Формируем подробный список участников
-    const participantsList = participants.map((p, index) => {
-      const twitchInfo = p.twitch_username ? `[${p.twitch_username}](https://twitch.tv/${p.twitch_username})` : 'Not provided';
-      return `${index + 1}. <@${p.id}>\n   • Xbox: ${p.xbox_nickname}\n   • Twitch: ${twitchInfo}\n   • Car: ${p.car_choice}`;
-    }).join('\n\n');
+    // Формируем заголовок
+    let message = `**📋 Participants List - ${eventData.title}**\n`;
+    message += `Total: ${participants.length}/${eventData.max_participants}\n\n`;
+
+    // Группируем участников по выбранным машинам
+    const carGroups = {};
+    participants.forEach(p => {
+      if (!carGroups[p.car_choice]) {
+        carGroups[p.car_choice] = [];
+      }
+      carGroups[p.car_choice].push(p);
+    });
+
+    // Формируем список по группам
+    for (const [car, drivers] of Object.entries(carGroups)) {
+      message += `**${car}** (${drivers.length}):\n`;
+      drivers.forEach((p, index) => {
+        const twitchInfo = p.twitch_username ? `[${p.twitch_username}](https://twitch.tv/${p.twitch_username})` : 'N/A';
+        message += `${index + 1}. <@${p.id}>\n`;
+        message += `   • Xbox: ${p.xbox_nickname}\n`;
+        message += `   • Twitch: ${twitchInfo}\n`;
+      });
+      message += '\n';
+    }
 
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        embeds: [{
-          title: `📋 Participants List - ${eventData.title}`,
-          description: participantsList,
-          color: 460551,
-          footer: {
-            text: `Total participants: ${participants.length}/${eventData.max_participants}`
-          }
-        }],
+        content: message,
         flags: 64 // Видно только отправителю команды
       }
     });
