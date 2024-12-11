@@ -69,15 +69,20 @@ export async function handleUpdateEvent(req, res) {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
         console.error('Failed to update message:', {
           status: response.status,
           statusText: response.statusText,
-          error: responseText
+          error: errorText,
+          details: response.status === 403 ? 'Missing required permissions. Please check bot permissions in the channel: VIEW_CHANNEL, SEND_MESSAGES, EMBED_LINKS, READ_MESSAGE_HISTORY' : 'Unknown error'
         });
+        await logService.logError(guild_id, 'updateEvent', `Failed to update message: ${errorText}`);
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: "⚠️ Failed to update event announcement. Please check bot permissions.",
+            content: response.status === 403 
+              ? "⚠️ Bot lacks required permissions. Please check bot permissions in the channel."
+              : "⚠️ Failed to update event announcement. Please try again later.",
             flags: 64
           }
         });

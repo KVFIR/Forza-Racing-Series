@@ -10,7 +10,7 @@ export function createEventEmbed(data) {
 
   const participants = data.participants || [];
   const participantsList = participants.length > 0
-    ? participants.map(p => `${p.username} (${p.xbox_nickname})`).join('\n')
+    ? participants.map(p => `<@${p.id}> - ${p.xbox_nickname}`).join('\n')
     : 'No registered participants';
 
   console.log('Participants list:', {
