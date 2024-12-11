@@ -4,7 +4,8 @@ export function createEventEmbed(data) {
   console.log('Creating embed with data:', {
     title: data.title,
     participantsCount: data.participants?.length || 0,
-    maxParticipants: data.max_participants
+    maxParticipants: data.max_participants,
+    fullData: JSON.stringify(data, null, 2)
   });
 
   const participants = data.participants || [];
@@ -14,7 +15,8 @@ export function createEventEmbed(data) {
 
   console.log('Participants list:', {
     count: participants.length,
-    list: participantsList
+    list: participantsList,
+    rawParticipants: JSON.stringify(participants, null, 2)
   });
 
   const embed = {
@@ -54,7 +56,8 @@ export function createEventEmbed(data) {
   console.log('Created embed:', {
     title: embed.title,
     fieldsCount: embed.fields.length,
-    participantsField: embed.fields[3]
+    participantsField: embed.fields[3],
+    fullEmbed: JSON.stringify(embed, null, 2)
   });
 
   return embed;
