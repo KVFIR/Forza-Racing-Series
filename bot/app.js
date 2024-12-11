@@ -13,11 +13,12 @@ import { handleLogging } from './commands/loggingCommand.js';
 import { handleCreateTicketButton } from './commands/ticketCommand.js';
 import { handleSetupRoles } from './commands/setupRolesCommand.js';
 import { 
+  handleTest,
   handleCreateEvent,
   handleRegisterEvent,
   handleCancelRegistration,
   handleUpdateEvent
-} from './commands/createEventCommand.js';
+} from './commands/index.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -178,7 +179,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   }
 });
 
-// Оборачиваем инициализацию в асинхронную фун��цию
+// Оборачиваем инициализацию в асинхронную функцию
 async function initializeApp() {
   // Test Firebase connection
   const testRef = ref(db, 'test');
