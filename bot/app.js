@@ -89,7 +89,7 @@ app.post('/interactions', async function(req, res) {
     if (type === InteractionType.APPLICATION_COMMAND) {
       const { name, type: commandType } = data;
       
-      // Обработка контекстных команд сообщений
+      // Обработка контек��тных команд сообщений
       if (commandType === 3) { // MESSAGE type commands
         return handleContextCommand(req, res);
       }
@@ -134,6 +134,23 @@ app.post('/interactions', async function(req, res) {
             }
           });
       }
+    }
+
+    if (type === InteractionType.MODAL_SUBMIT) {
+      const { custom_id } = data;
+      
+      if (custom_id.startsWith('register_modal_')) {
+        return handleRegisterEvent(req, res);
+      }
+
+      console.error(`Unknown modal submission: ${custom_id}`);
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "Unknown modal submission",
+          flags: 64
+        }
+      });
     }
 
     // Если дошли до сюда - неизвестный тип взаимодействия
