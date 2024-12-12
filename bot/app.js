@@ -89,7 +89,7 @@ app.post('/interactions', async function(req, res) {
     if (type === InteractionType.APPLICATION_COMMAND) {
       const { name, type: commandType } = data;
       
-      // Обработка контек��тных команд сообщений
+      // Обработка контекстных команд сообщений
       if (commandType === 3) { // MESSAGE type commands
         return handleContextCommand(req, res);
       }
@@ -124,6 +124,8 @@ app.post('/interactions', async function(req, res) {
           return handleRegisterEvent(req, res);
         case 'cancel_registration':
           return handleCancelRegistration(req, res);
+        case 'create_ticket':
+          return handleCreateTicketButton(req, res);
         default:
           console.error(`Unknown component interaction: ${custom_id}`);
           return res.send({
