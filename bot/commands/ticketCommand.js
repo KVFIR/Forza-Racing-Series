@@ -363,14 +363,33 @@ export async function handleCloseTicket(req, res) {
     const rolesSnapshot = await get(ref(db, `guild_roles/${guild_id}`));
     const raceControlRoleId = rolesSnapshot.val()?.race_control_role;
 
-    const hasPermission = member.permissions === "8" || // Администратор
-                         member.roles.includes(raceControlRoleId); // Race Control
-
-    if (!hasPermission) {
+    if (!raceControlRoleId) {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: "❌ You don't have permission to close tickets!",
+          content: "⚠️ Race Control role is not set up! Please contact server administrators.",
+          flags: 64
+        }
+      });
+    }
+
+    const isAdmin = member.permissions === "8";
+    const isRaceControl = member.roles.includes(raceControlRoleId);
+    const hasPermission = isAdmin || isRaceControl;
+
+    if (!hasPermission) {
+      console.log('Unauthorized ticket close attempt:', {
+        user: `${member.user.username} (${member.user.id})`,
+        guildId: guild_id,
+        roles: member.roles,
+        isAdmin,
+        isRaceControl
+      });
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ You don't have permission to close tickets!\nOnly Race Control members and administrators can close tickets.",
           flags: 64
         }
       });
@@ -408,7 +427,7 @@ export async function handleCloseTicket(req, res) {
       })
     });
 
-    // Выполняем остальные операции после отправки сообщения
+    // Выполняем остальн��е операции после отправки сообщения
     await Promise.all([
       // Удаляем создателя тикета из ветки
       fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/thread-members/${ticket.author.id}`, {
@@ -541,7 +560,7 @@ export async function handleVerdictSubmit(req, res) {
 
     const verdictText = components[0].components[0].value;
 
-    // Отправляем вердикт в ветку
+    // Отпра��ляем вердикт в ветку
     await fetch(`https://discord.com/api/v10/channels/${ticket.thread_id}/messages`, {
       method: 'POST',
       headers: {
