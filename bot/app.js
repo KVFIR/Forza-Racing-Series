@@ -6,9 +6,6 @@ import {
   verifyKeyMiddleware,
   MessageComponentTypes
 } from 'discord-interactions';
-import { getUser, createUser } from './database.js';
-import { db } from './firebase.js';
-import { ref, set } from 'firebase/database';
 import { handleLogging } from './commands/loggingCommand.js';
 import { 
   handleCreateTicketButton,
