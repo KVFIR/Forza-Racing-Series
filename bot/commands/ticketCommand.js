@@ -389,7 +389,7 @@ export async function handleCloseTicket(req, res) {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: "❌ You don't have permission to close tickets!\nOnly Race Control members and administrators can close tickets.",
+          content: "❌ You don't have permission to close tickets!",
           flags: 64
         }
       });
