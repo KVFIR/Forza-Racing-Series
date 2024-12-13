@@ -27,23 +27,20 @@ import { handleContextCommand } from './contextActions/index.js';
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Добавляем middleware для парсинга JSON
-app.use(express.json());
-
-// Добавляем middleware для верификации запросов от Discord
-app.use('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY));
-
 // Metrics
 let totalCommands = 0;
 let errorCount = 0;
 
-// Unhandled promise rejection
+// Middleware
+app.use(express.json());
+app.use('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY));
+
+// Error Handlers
 process.on('unhandledRejection', error => {
   console.error('Unhandled promise rejection:', error);
   errorCount++;
 });
 
-// Express error handling
 app.use((err, req, res, next) => {
   console.error('Express error:', err);
   errorCount++;
@@ -53,7 +50,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Logging requests
+// Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
   next();
@@ -68,7 +65,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Metrics
+// Metrics endpoint
 app.get('/metrics', (req, res) => {
   res.json({
     uptime: process.uptime(),
@@ -78,131 +75,131 @@ app.get('/metrics', (req, res) => {
   });
 });
 
-// Добавим константу для прав администратора
-const ADMINISTRATOR_PERMISSION = BigInt(0x8);
+// Helper functions
+function createErrorResponse(message, isEphemeral = true) {
+  return {
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: message,
+      flags: isEphemeral ? 64 : 0
+    }
+  };
+}
 
-// Interactions endpoint
+// Interaction handlers
+function handleApplicationCommand(req, res) {
+  const { name, type: commandType } = req.body.data;
+  console.log(`Handling application command: ${name}`);
+  totalCommands++;
+
+  // Handle message context commands
+  if (commandType === 3) {
+    return handleContextCommand(req, res);
+  }
+
+  // Handle slash commands
+  switch (name) {
+    case 'test':
+      return handleTest(req, res);
+    case 'create_event':
+      return handleCreateEvent(req, res);
+    case 'logging':
+      return handleLogging(req, res);
+    case 'setup_roles':
+      return handleSetupRoles(req, res);
+    case 'create_ticket_button':
+      return handleCreateTicketButton(req, res);
+    default:
+      console.error(`Unknown command: ${name}`);
+      return res.send(createErrorResponse("Unknown command"));
+  }
+}
+
+function handleMessageComponent(req, res) {
+  const { custom_id } = req.body.data;
+  console.log(`Handling message component: ${custom_id}`);
+  totalCommands++;
+
+  switch (custom_id) {
+    case 'register_event':
+      return handleRegisterEvent(req, res);
+    case 'cancel_registration':
+      return handleCancelRegistration(req, res);
+    case 'create_ticket':
+      return handleCreateTicketButton(req, res);
+    case 'create_incident_ticket':
+      return handleShowTicketModal(req, res);
+    default:
+      if (custom_id.startsWith('verdict_ticket_')) {
+        return handleShowVerdictModal(req, res);
+      }
+      if (custom_id.startsWith('close_ticket_')) {
+        return handleCloseTicket(req, res);
+      }
+      console.error(`Unknown component interaction: ${custom_id}`);
+      return res.send(createErrorResponse("Unknown interaction"));
+  }
+}
+
+function handleModalSubmit(req, res) {
+  const { custom_id } = req.body.data;
+  console.log(`Handling modal submit: ${custom_id}`);
+  totalCommands++;
+
+  if (custom_id.startsWith('register_modal_')) {
+    return handleRegisterEvent(req, res);
+  }
+  if (custom_id.startsWith('ticket_modal_')) {
+    return handleTicketSubmit(req, res);
+  }
+  if (custom_id.startsWith('verdict_modal_')) {
+    return handleVerdictSubmit(req, res);
+  }
+
+  console.error(`Unknown modal submission: ${custom_id}`);
+  return res.send(createErrorResponse("Unknown modal submission"));
+}
+
+// Main interaction handler
 app.post('/interactions', async function(req, res) {
-  const { type, data } = req.body;
+  const { type } = req.body;
 
   try {
+    // Handle ping
     if (type === InteractionType.PING) {
       return res.send({ type: InteractionResponseType.PONG });
     }
 
-    if (type === InteractionType.APPLICATION_COMMAND) {
-      const { name, type: commandType } = data;
-      
-      // Обработка контекстных команд сообщений
-      if (commandType === 3) { // MESSAGE type commands
-        return handleContextCommand(req, res);
-      }
-
-      // Обработка обычных слэш-команд
-      switch (name) {
-        case 'test':
-          return handleTest(req, res);
-        case 'create_event':
-          return handleCreateEvent(req, res);
-        case 'logging':
-          return handleLogging(req, res);
-        case 'setup_roles':
-          return handleSetupRoles(req, res);
-        case 'create_ticket_button':
-          return handleCreateTicketButton(req, res);
-        default:
-          console.error(`Unknown command: ${name}`);
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              content: "Unknown command",
-              flags: 64
-            }
-          });
-      }
+    // Handle commands and interactions
+    switch (type) {
+      case InteractionType.APPLICATION_COMMAND:
+        return handleApplicationCommand(req, res);
+      case InteractionType.MESSAGE_COMPONENT:
+        return handleMessageComponent(req, res);
+      case InteractionType.MODAL_SUBMIT:
+        return handleModalSubmit(req, res);
+      default:
+        console.error(`Unknown interaction type: ${type}`);
+        return res.send(createErrorResponse("Unknown interaction type"));
     }
-
-    if (type === InteractionType.MESSAGE_COMPONENT) {
-      const { custom_id } = data;
-      
-      switch (custom_id) {
-        case 'register_event':
-          return handleRegisterEvent(req, res);
-        case 'cancel_registration':
-          return handleCancelRegistration(req, res);
-        case 'create_ticket':
-          return handleCreateTicketButton(req, res);
-        case 'create_incident_ticket':
-          return handleShowTicketModal(req, res);
-        default:
-          if (custom_id.startsWith('verdict_ticket_')) {
-            return handleShowVerdictModal(req, res);
-          }
-          if (custom_id.startsWith('close_ticket_')) {
-            return handleCloseTicket(req, res);
-          }
-          console.error(`Unknown component interaction: ${custom_id}`);
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              content: "Unknown interaction",
-              flags: 64
-            }
-          });
-      }
-    }
-
-    if (type === InteractionType.MODAL_SUBMIT) {
-      const { custom_id } = data;
-      
-      if (custom_id.startsWith('register_modal_')) {
-        return handleRegisterEvent(req, res);
-      }
-      if (custom_id.startsWith('ticket_modal_')) {
-        return handleTicketSubmit(req, res);
-      }
-      if (custom_id.startsWith('verdict_modal_')) {
-        return handleVerdictSubmit(req, res);
-      }
-
-      console.error(`Unknown modal submission: ${custom_id}`);
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: "Unknown modal submission",
-          flags: 64
-        }
-      });
-    }
-
-    // Если дошли до сюда - неизвестный тип взаимодействия
-    console.error(`Unknown interaction type: ${type}`);
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: "Unknown interaction type",
-        flags: 64
-      }
-    });
-
   } catch (error) {
     console.error('Error processing interaction:', error);
+    errorCount++;
     if (!res.headersSent) {
       res.status(500).json({ error: 'Internal server error' });
     }
   }
 });
 
-// Инициализация Firebase
+// Server initialization
 async function initializeApp() {
   try {
-    console.log('Firebase initialized successfully');
     app.listen(port, () => {
-      console.log('Firebase connection successful');
-      console.log(`Listening on port ${port}`);
+      console.log(`Server started successfully on port ${port}`);
     });
   } catch (error) {
     console.error('Failed to initialize app:', error);
+    process.exit(1);
   }
 }
 
