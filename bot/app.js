@@ -111,6 +111,8 @@ app.post('/interactions', async function(req, res) {
           return handleLogging(req, res);
         case 'setup_roles':
           return handleSetupRoles(req, res);
+        case 'create_ticket_button':
+          return handleCreateTicketButton(req, res);
         default:
           console.error(`Unknown command: ${name}`);
           return res.send({
