@@ -10,7 +10,14 @@ import { getUser, createUser } from './database.js';
 import { db } from './firebase.js';
 import { ref, set } from 'firebase/database';
 import { handleLogging } from './commands/loggingCommand.js';
-import { handleCreateTicketButton } from './commands/ticketCommand.js';
+import { 
+  handleCreateTicketButton,
+  handleShowTicketModal,
+  handleTicketSubmit,
+  handleShowVerdictModal,
+  handleVerdictSubmit,
+  handleCloseTicket
+} from './commands/ticketCommand.js';
 import { handleSetupRoles } from './commands/setupRolesCommand.js';
 import { 
   handleTest,
@@ -126,7 +133,15 @@ app.post('/interactions', async function(req, res) {
           return handleCancelRegistration(req, res);
         case 'create_ticket':
           return handleCreateTicketButton(req, res);
+        case 'create_incident_ticket':
+          return handleShowTicketModal(req, res);
         default:
+          if (custom_id.startsWith('verdict_ticket_')) {
+            return handleShowVerdictModal(req, res);
+          }
+          if (custom_id.startsWith('close_ticket_')) {
+            return handleCloseTicket(req, res);
+          }
           console.error(`Unknown component interaction: ${custom_id}`);
           return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -143,6 +158,12 @@ app.post('/interactions', async function(req, res) {
       
       if (custom_id.startsWith('register_modal_')) {
         return handleRegisterEvent(req, res);
+      }
+      if (custom_id.startsWith('ticket_modal_')) {
+        return handleTicketSubmit(req, res);
+      }
+      if (custom_id.startsWith('verdict_modal_')) {
+        return handleVerdictSubmit(req, res);
       }
 
       console.error(`Unknown modal submission: ${custom_id}`);
