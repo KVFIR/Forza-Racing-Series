@@ -92,26 +92,32 @@ function handleApplicationCommand(req, res) {
   console.log(`Handling application command: ${name}`);
   totalCommands++;
 
-  // Handle message context commands
-  if (commandType === 3) {
-    return handleContextCommand(req, res);
-  }
+  try {
+    // Handle message context commands
+    if (commandType === 3) {
+      return handleContextCommand(req, res);
+    }
 
-  // Handle slash commands
-  switch (name) {
-    case 'test':
-      return handleTest(req, res);
-    case 'create_event':
-      return handleCreateEvent(req, res);
-    case 'logging':
-      return handleLogging(req, res);
-    case 'setup_roles':
-      return handleSetupRoles(req, res);
-    case 'create_ticket_button':
-      return handleCreateTicketButton(req, res);
-    default:
-      console.error(`Unknown command: ${name}`);
-      return res.send(createErrorResponse("Unknown command"));
+    // Handle slash commands
+    switch (name) {
+      case 'test':
+        return handleTest(req, res);
+      case 'create_event':
+        return handleCreateEvent(req, res);
+      case 'logging':
+        return handleLogging(req, res);
+      case 'setup_roles':
+        return handleSetupRoles(req, res);
+      case 'create_ticket_button':
+        return handleCreateTicketButton(req, res);
+      default:
+        console.error(`Unknown command: ${name}`);
+        return res.send(createErrorResponse("Unknown command"));
+    }
+  } catch (error) {
+    console.error(`Error handling command ${name}:`, error);
+    errorCount++;
+    return res.send(createErrorResponse(error.message || "Failed to process command"));
   }
 }
 
@@ -120,24 +126,30 @@ function handleMessageComponent(req, res) {
   console.log(`Handling message component: ${custom_id}`);
   totalCommands++;
 
-  switch (custom_id) {
-    case 'register_event':
-      return handleRegisterEvent(req, res);
-    case 'cancel_registration':
-      return handleCancelRegistration(req, res);
-    case 'create_ticket':
-      return handleCreateTicketButton(req, res);
-    case 'create_incident_ticket':
-      return handleShowTicketModal(req, res);
-    default:
-      if (custom_id.startsWith('verdict_ticket_')) {
-        return handleShowVerdictModal(req, res);
-      }
-      if (custom_id.startsWith('close_ticket_')) {
-        return handleCloseTicket(req, res);
-      }
-      console.error(`Unknown component interaction: ${custom_id}`);
-      return res.send(createErrorResponse("Unknown interaction"));
+  try {
+    switch (custom_id) {
+      case 'register_event':
+        return handleRegisterEvent(req, res);
+      case 'cancel_registration':
+        return handleCancelRegistration(req, res);
+      case 'create_ticket':
+        return handleCreateTicketButton(req, res);
+      case 'create_incident_ticket':
+        return handleShowTicketModal(req, res);
+      default:
+        if (custom_id.startsWith('verdict_ticket_')) {
+          return handleShowVerdictModal(req, res);
+        }
+        if (custom_id.startsWith('close_ticket_')) {
+          return handleCloseTicket(req, res);
+        }
+        console.error(`Unknown component interaction: ${custom_id}`);
+        return res.send(createErrorResponse("Unknown interaction"));
+    }
+  } catch (error) {
+    console.error(`Error handling component interaction ${custom_id}:`, error);
+    errorCount++;
+    return res.send(createErrorResponse(error.message || "Failed to process interaction"));
   }
 }
 
@@ -146,18 +158,24 @@ function handleModalSubmit(req, res) {
   console.log(`Handling modal submit: ${custom_id}`);
   totalCommands++;
 
-  if (custom_id.startsWith('register_modal_')) {
-    return handleRegisterEvent(req, res);
-  }
-  if (custom_id.startsWith('ticket_modal_')) {
-    return handleTicketSubmit(req, res);
-  }
-  if (custom_id.startsWith('verdict_modal_')) {
-    return handleVerdictSubmit(req, res);
-  }
+  try {
+    if (custom_id.startsWith('register_modal_')) {
+      return handleRegisterEvent(req, res);
+    }
+    if (custom_id.startsWith('ticket_modal_')) {
+      return handleTicketSubmit(req, res);
+    }
+    if (custom_id.startsWith('verdict_modal_')) {
+      return handleVerdictSubmit(req, res);
+    }
 
-  console.error(`Unknown modal submission: ${custom_id}`);
-  return res.send(createErrorResponse("Unknown modal submission"));
+    console.error(`Unknown modal submission: ${custom_id}`);
+    return res.send(createErrorResponse("Unknown modal submission"));
+  } catch (error) {
+    console.error(`Error handling modal submission ${custom_id}:`, error);
+    errorCount++;
+    return res.send(createErrorResponse(error.message || "Failed to process modal submission"));
+  }
 }
 
 // Main interaction handler
