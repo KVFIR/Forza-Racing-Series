@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
+import cors from 'express';
+import timeout from 'connect-timeout';
+import rateLimit from 'express-rate-limit';
 import {
   InteractionType,
   InteractionResponseType,
@@ -31,9 +34,50 @@ const port = process.env.PORT || 8080;
 let totalCommands = 0;
 let errorCount = 0;
 
-// Middleware
-app.use(express.json());
-app.use('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY));
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+  next();
+});
+
+// JSON parsing middleware for all other routes
+app.use((req, res, next) => {
+  if (req.path === '/interactions') {
+    return next();
+  }
+  express.json()(req, res, next);
+});
+
+// Discord interactions route with signature verification
+app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function(req, res) {
+  const { type } = req.body;
+
+  try {
+    // Handle ping
+    if (type === InteractionType.PING) {
+      return res.send({ type: InteractionResponseType.PONG });
+    }
+
+    // Handle commands and interactions
+    switch (type) {
+      case InteractionType.APPLICATION_COMMAND:
+        return handleApplicationCommand(req, res);
+      case InteractionType.MESSAGE_COMPONENT:
+        return handleMessageComponent(req, res);
+      case InteractionType.MODAL_SUBMIT:
+        return handleModalSubmit(req, res);
+      default:
+        console.error(`Unknown interaction type: ${type}`);
+        return res.send(createErrorResponse("Unknown interaction type"));
+    }
+  } catch (error) {
+    console.error('Error processing interaction:', error);
+    errorCount++;
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
 
 // Error Handlers
 process.on('unhandledRejection', error => {
@@ -42,18 +86,20 @@ process.on('unhandledRejection', error => {
 });
 
 app.use((err, req, res, next) => {
+  if (err.name === 'DiscordSignatureError') {
+    console.error('Invalid Discord signature:', err);
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  next(err);
+});
+
+app.use((err, req, res, next) => {
   console.error('Express error:', err);
   errorCount++;
   res.status(500).json({
     error: 'Internal server error',
-    message: err.message
+    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
   });
-});
-
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
-  next();
 });
 
 // Health check endpoint
@@ -178,37 +224,6 @@ function handleModalSubmit(req, res) {
   }
 }
 
-// Main interaction handler
-app.post('/interactions', async function(req, res) {
-  const { type } = req.body;
-
-  try {
-    // Handle ping
-    if (type === InteractionType.PING) {
-      return res.send({ type: InteractionResponseType.PONG });
-    }
-
-    // Handle commands and interactions
-    switch (type) {
-      case InteractionType.APPLICATION_COMMAND:
-        return handleApplicationCommand(req, res);
-      case InteractionType.MESSAGE_COMPONENT:
-        return handleMessageComponent(req, res);
-      case InteractionType.MODAL_SUBMIT:
-        return handleModalSubmit(req, res);
-      default:
-        console.error(`Unknown interaction type: ${type}`);
-        return res.send(createErrorResponse("Unknown interaction type"));
-    }
-  } catch (error) {
-    console.error('Error processing interaction:', error);
-    errorCount++;
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-});
-
 // Server initialization
 async function initializeApp() {
   try {
@@ -220,5 +235,19 @@ async function initializeApp() {
     process.exit(1);
   }
 }
+
+app.use(timeout('10s')); // Discord требует ответа в течение 3 секунд
+app.use(haltOnTimedout);
+
+function haltOnTimedout(req, res, next) {
+  if (!req.timedout) next();
+}
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 100 // максимум 100 запросов с одного IP
+});
+
+app.use(limiter);
 
 initializeApp();
