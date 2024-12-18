@@ -14,7 +14,7 @@ export function createEventEmbed(data) {
   const participantsGroups = [];
   for (let i = 0; i < participants.length; i += 24) {
     const group = participants.slice(i, i + 24);
-    participantsGroups.push(group.map(p => `${p.username}`).join('\n'));
+    participantsGroups.push(group.map(p => `${p.xbox_nickname}`).join('\n'));
   }
 
   // Если нет участников, создаем одну группу с сообщением
