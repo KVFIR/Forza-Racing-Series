@@ -2,54 +2,61 @@ import { InteractionResponseType } from 'discord-interactions';
 import { eventService } from '../services/eventService.js';
 
 export async function handleEventParticipants(req, res) {
-  // Сразу отправляем начальный ответ
-  res.send({
-    type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      flags: 64 // Эфемерное сообщение
-    }
-  });
-
-  const { guild_id } = req.body;
-  const targetMessage = req.body.data.resolved.messages[Object.keys(req.body.data.resolved.messages)[0]];
-  const { id: messageId, channel_id } = targetMessage;
-
   try {
-    // Находим событие
+    // 1. Сразу отправляем "думающий" статус
+    await res.send({
+      type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        flags: 64 // Эфемерное сообщение
+      }
+    });
+
+    const { guild_id } = req.body;
+    const targetMessage = req.body.data.resolved.messages[Object.keys(req.body.data.resolved.messages)[0]];
+    const { id: messageId, channel_id } = targetMessage;
+
+    // 2. Получаем данные события
     const event = await eventService.findEvent(messageId, channel_id);
     if (!event) {
-      return sendFollowUp(req, "⚠️ Event not found. Please check the message ID.");
+      return updateResponse(req, "⚠️ Event not found. Please check the message ID.");
     }
 
     const { eventData } = event;
     const participants = eventData.participants || [];
 
     if (participants.length === 0) {
-      return sendFollowUp(req, "No participants registered for this event yet.");
+      return updateResponse(req, "No participants registered for this event yet.");
     }
 
-    // Формируем сообщение
+    // 3. Формируем сообщение
     let message = `**📋 Participants List - ${eventData.title}**\n`;
     message += `Total: ${participants.length}/${eventData.max_participants}\n\n`;
 
-    participants.forEach((p, index) => {
-      const twitchInfo = p.twitch_username ? `[${p.twitch_username}](<https://twitch.tv/${p.twitch_username}>)` : 'N/A';
-      message += `${index + 1}. ${p.username}\n`;
-      message += `> Xbox: ${p.xbox_nickname}\n`;
-      message += `> Twitch: ${twitchInfo}\n`;
-      message += `> Car: ${p.car_choice}\n`;
-    });
+    // 4. Добавляем участников блоками
+    const participantsChunks = [];
+    for (let i = 0; i < participants.length; i += 10) {
+      const chunk = participants.slice(i, i + 10);
+      let chunkText = '';
+      chunk.forEach((p, index) => {
+        const twitchInfo = p.twitch_username ? `[${p.twitch_username}](<https://twitch.tv/${p.twitch_username}>)` : 'N/A';
+        chunkText += `${i + index + 1}. ${p.username}\n`;
+        chunkText += `> Xbox: ${p.xbox_nickname}\n`;
+        chunkText += `> Twitch: ${twitchInfo}\n`;
+        chunkText += `> Car: ${p.car_choice}\n`;
+      });
+      participantsChunks.push(chunkText);
+    }
 
-    return sendFollowUp(req, message);
+    // 5. Отправляем обновленный ответ
+    return updateResponse(req, message + participantsChunks.join('\n'));
 
   } catch (error) {
     console.error('Error in handleEventParticipants:', error);
-    return sendFollowUp(req, "⚠️ Failed to get participants list. Please try again later.");
+    return updateResponse(req, "⚠️ Failed to get participants list. Please try again later.");
   }
 }
 
-// Функция для отправки отложенного ответа
-async function sendFollowUp(req, content) {
+async function updateResponse(req, content) {
   try {
     await fetch(`https://discord.com/api/v10/webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`, {
       method: 'PATCH',
@@ -62,6 +69,6 @@ async function sendFollowUp(req, content) {
       })
     });
   } catch (error) {
-    console.error('Error sending follow-up:', error);
+    console.error('Error updating response:', error);
   }
 } 
