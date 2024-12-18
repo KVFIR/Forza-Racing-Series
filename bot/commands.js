@@ -32,7 +32,7 @@ async function cleanupCommands() {
       return;
     }
 
-    // Создаем новый список команд
+    // Создаем новый ��писок команд
     const commands = [
       entryPointCommand,
       {
@@ -101,6 +101,21 @@ async function cleanupCommands() {
             name: 'participant',
             description: 'Role for Event Participants',
             type: 8,
+            required: true
+          }
+        ]
+      },
+      {
+        name: 'republish_event',
+        description: 'Republish existing event by ID',
+        type: 1,
+        default_member_permissions: "8",
+        dm_permission: false,
+        options: [
+          {
+            name: 'event_id',
+            description: 'Event ID to republish',
+            type: 3,
             required: true
           }
         ]

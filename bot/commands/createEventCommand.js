@@ -8,6 +8,7 @@ import { createEventEmbed, createEventButtons } from '../utils/embedBuilder.js';
 import { eventService } from '../services/eventService.js';
 import { logService } from '../services/logService.js';
 import { roleService } from '../services/roleService.js';
+import { dateToTimestamp, formatDate } from '../utils/dateUtils.js';
 
 export {
   handleCreateEvent,
@@ -45,7 +46,8 @@ Need help? Contact server administrators.`,
     const eventData = {
       title: 'HEAVY is the CROWN',
       max_participants: 48,
-      role_id: participantRoleId
+      role_id: participantRoleId,
+      start_time: dateToTimestamp('09/12/2024 20:18')
     };
 
     // Пробуем отправить сообщение

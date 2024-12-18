@@ -26,6 +26,7 @@ import {
   handleCancelRegistration
 } from './commands/index.js';
 import { handleContextCommand } from './contextActions/index.js';
+import { handleRepublishEvent } from './commands/republishEventCommand.js';
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -156,6 +157,8 @@ function handleApplicationCommand(req, res) {
         return handleSetupRoles(req, res);
       case 'create_ticket_button':
         return handleCreateTicketButton(req, res);
+      case 'republish_event':
+        return handleRepublishEvent(req, res);
       default:
         console.error(`Unknown command: ${name}`);
         return res.send(createErrorResponse("Unknown command"));
