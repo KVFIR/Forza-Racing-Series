@@ -14,7 +14,7 @@ export function createEventEmbed(data) {
   const participantsGroups = [];
   for (let i = 0; i < participants.length; i += 24) {
     const group = participants.slice(i, i + 24);
-    participantsGroups.push(group.map(p => `<@${p.id}>`).join('\n'));
+    participantsGroups.push(group.map(p => `${p.username}`).join('\n'));
   }
 
   // Если нет участников, создаем одну группу с сообщением
@@ -69,9 +69,6 @@ export function createEventEmbed(data) {
       url: "https://cdn.discordapp.com/attachments/1192170720311132282/1312388356449107968/IMG_20220720_0121372.png?ex=674c5067&is=674afee7&hm=bbeecd025fb4d5b7eb97c8f96e42770745a53533e6019458e14cd6b0b6593903&"
     },
     fields: fields,
-    allowed_mentions: {
-      parse: ["users"]
-    }
   };
 
   console.log('Created embed:', {
