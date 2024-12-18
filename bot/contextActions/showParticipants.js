@@ -43,7 +43,7 @@ export async function handleEventParticipants(req, res) {
       
       chunk.forEach((p, index) => {
         const twitchInfo = p.twitch_username ? `[${p.twitch_username}](<https://twitch.tv/${p.twitch_username}>)` : 'N/A';
-        messageContent += `${i + index + 1}. ${p.xbox_nickname}\n`;
+        messageContent += `${i + index + 1}. <@${p.id}>\n`;
         messageContent += `> Xbox: ${p.xbox_nickname}\n`;
         messageContent += `> Twitch: ${twitchInfo}\n`;
         messageContent += `> Car: ${p.car_choice}\n`;
