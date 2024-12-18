@@ -1,6 +1,3 @@
 export { handleTest } from './testCommand.js';
-export { 
-    handleCreateEvent,
-    handleRegisterEvent,
-    handleCancelRegistration
-} from './createEventCommand.js';
+export { handleCreateEvent } from './createEventCommand.js';
+export { handleProfile } from './profileCommand.js';

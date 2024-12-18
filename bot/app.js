@@ -1,13 +1,11 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'express';
 import timeout from 'connect-timeout';
 import rateLimit from 'express-rate-limit';
 import {
   InteractionType,
   InteractionResponseType,
   verifyKeyMiddleware,
-  MessageComponentTypes
 } from 'discord-interactions';
 import { handleLogging } from './commands/loggingCommand.js';
 import { 
@@ -21,11 +19,14 @@ import {
 import { handleSetupRoles } from './commands/setupRolesCommand.js';
 import { 
   handleTest,
-  handleCreateEvent,
-  handleRegisterEvent,
-  handleCancelRegistration
+  handleCreateEvent
 } from './commands/index.js';
 import { handleContextCommand } from './contextActions/index.js';
+import { handleProfile } from './commands/profileCommand.js';
+import { handleEvents } from './commands/eventsCommand.js';
+import { handlePreview } from './commands/previewCommand.js';
+import { handlePublish } from './commands/publishCommand.js';
+import { initializeCommands } from './commands.js';
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -85,7 +86,7 @@ process.on('unhandledRejection', error => {
   errorCount++;
 });
 
-app.use((err, req, res, next) => {
+app.use((err, res, next) => {
   if (err.name === 'DiscordSignatureError') {
     console.error('Invalid Discord signature:', err);
     return res.status(401).json({ error: 'Invalid signature' });
@@ -93,7 +94,7 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-app.use((err, req, res, next) => {
+app.use((err, res ) => {
   console.error('Express error:', err);
   errorCount++;
   res.status(500).json({
@@ -104,15 +105,25 @@ app.use((err, req, res, next) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({
+  res.json({
     status: 'ok',
     uptime: process.uptime(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    commandsRegistered: Object.keys(commandIds).length > 0
+  });
+});
+
+// Command registration status
+app.get('/commands/status', (req, res) => {
+  res.json({
+    total: Object.keys(commandIds).length,
+    commands: commandIds,
+    lastUpdate: new Date().toISOString()
   });
 });
 
 // Metrics endpoint
-app.get('/metrics', (req, res) => {
+app.get('/metrics', (res) => {
   res.json({
     uptime: process.uptime(),
     totalCommands,
@@ -156,6 +167,14 @@ function handleApplicationCommand(req, res) {
         return handleSetupRoles(req, res);
       case 'create_ticket_button':
         return handleCreateTicketButton(req, res);
+      case 'profile':
+        return handleProfile(req, res);
+      case 'events':
+        return handleEvents(req, res);
+      case 'preview':
+        return handlePreview(req, res);
+      case 'publish':
+        return handlePublish(req, res);
       default:
         console.error(`Unknown command: ${name}`);
         return res.send(createErrorResponse("Unknown command"));
@@ -169,29 +188,22 @@ function handleApplicationCommand(req, res) {
 
 function handleMessageComponent(req, res) {
   const { custom_id } = req.body.data;
-  console.log(`Handling message component: ${custom_id}`);
-  totalCommands++;
 
   try {
-    switch (custom_id) {
-      case 'register_event':
-        return handleRegisterEvent(req, res);
-      case 'cancel_registration':
-        return handleCancelRegistration(req, res);
-      case 'create_ticket':
-        return handleCreateTicketButton(req, res);
-      case 'create_incident_ticket':
-        return handleShowTicketModal(req, res);
-      default:
-        if (custom_id.startsWith('verdict_ticket_')) {
-          return handleShowVerdictModal(req, res);
-        }
-        if (custom_id.startsWith('close_ticket_')) {
-          return handleCloseTicket(req, res);
-        }
-        console.error(`Unknown component interaction: ${custom_id}`);
-        return res.send(createErrorResponse("Unknown interaction"));
+    if (custom_id === 'create_ticket') {
+      return handleCreateTicketButton(req, res);
     }
+    if (custom_id === 'create_incident_ticket') {
+      return handleShowTicketModal(req, res);
+    }
+    if (custom_id.startsWith('verdict_ticket_')) {
+      return handleShowVerdictModal(req, res);
+    }
+    if (custom_id.startsWith('close_ticket_')) {
+      return handleCloseTicket(req, res);
+    }
+    console.error(`Unknown component interaction: ${custom_id}`);
+    return res.send(createErrorResponse("Unknown interaction"));
   } catch (error) {
     console.error(`Error handling component interaction ${custom_id}:`, error);
     errorCount++;
@@ -225,18 +237,22 @@ function handleModalSubmit(req, res) {
 }
 
 // Server initialization
-async function initializeApp() {
+async function startServer() {
   try {
+    // Initialize commands
+    await initializeCommands();
+
+    // Start the server
     app.listen(port, () => {
       console.log(`Server started successfully on port ${port}`);
     });
   } catch (error) {
-    console.error('Failed to initialize app:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 }
 
-app.use(timeout('10s')); // Discord требует ответа в течение 3 секунд
+app.use(timeout('10s')); // Discord requires a response in 3 seconds
 app.use(haltOnTimedout);
 
 function haltOnTimedout(req, res, next) {
@@ -244,10 +260,11 @@ function haltOnTimedout(req, res, next) {
 }
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 минут
-  max: 100 // максимум 100 запросов с одного IP
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // maximum 100 requests per IP
 });
 
 app.use(limiter);
 
-initializeApp();
+// Start the server
+startServer();
