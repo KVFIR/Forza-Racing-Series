@@ -17,8 +17,8 @@ Below is a basic overview of the project structure:
 ├── .env.sample -> sample .env file
 ├── app.js      -> main entrypoint for app
 ├── commands.js -> slash command payloads + helpers
-├── game.js     -> logic specific to RPS
 ├── utils.js    -> utility functions and enums
+├── PLAN.md     -> development roadmap
 ├── package.json
 ├── README.md
 └── .gitignore
@@ -113,3 +113,41 @@ To set up Firebase:
 
 1. Copy `firebase.example.js` to `firebase.js`
 2. Replace the placeholder values in `firebase.js` with your actual Firebase configuration
+
+## Features
+
+### Current Features
+- Event creation and management
+- Participant registration system
+- Ticket system for incident reporting
+- Role management
+- Logging system
+
+### Upcoming Features
+- Event scheduling with dates
+- Results tracking system
+- Points system
+- Enhanced profile system
+- Statistics and leaderboards
+
+See [PLAN.md](PLAN.md) for detailed development roadmap.
+
+## API Endpoints
+
+### Health Check
+```
+GET /health
+```
+Returns server status and uptime information.
+
+### Command Status
+```
+GET /commands/status
+```
+Returns information about registered Discord commands.
+
+### Metrics
+```
+GET /metrics
+```
+Returns server metrics including command usage statistics.

@@ -1,4 +1,4 @@
-import { ref, get, set } from 'firebase/database';
+import { ref, get, set, update, remove } from 'firebase/database';
 import { db } from '../firebase.js';
 
 /**
@@ -39,19 +39,31 @@ class EventService {
    * Create new event
    */
   async createEvent(guildId, channelId, interactionId, eventData) {
+    console.log('Creating event for guild:', guildId);
+    
+    const eventId = `FH5-${Math.random().toString().substring(2, 8)}`;
     const eventKey = Date.now();
     const eventRef = ref(db, `events/${eventKey}`);
 
-    await set(eventRef, {
+    const fullEventData = {
       ...eventData,
+      event_id: eventId,
       created_at: Date.now(),
       participants: [],
       channel_id: channelId,
       interaction_id: interactionId,
-      message_ids: []
+      message_ids: [],
+      published: false
+    };
+
+    console.log('Saving event with data:', {
+      eventId,
+      guildId: fullEventData.guild_id,
+      title: fullEventData.title
     });
 
-    return { eventKey, eventData };
+    await set(eventRef, fullEventData);
+    return { eventKey, eventData: fullEventData };
   }
 
   /**
@@ -72,9 +84,9 @@ class EventService {
 
     const eventData = snapshot.val();
     console.log('Current event data:', {
+      guildId: eventData.guild_id,
       title: eventData.title,
-      participantsCount: eventData.participants?.length || 0,
-      messageIds: eventData.message_ids
+      participantsCount: eventData.participants?.length || 0
     });
 
     const participants = eventData.participants || [];
@@ -167,6 +179,209 @@ class EventService {
       ...eventData,
       message_ids: messageIds
     });
+  }
+
+  async getUserEvents(guildId, userId) {
+    try {
+      console.log('Getting events for:', { guildId, userId });
+      const eventsRef = ref(db, 'events');
+      const snapshot = await get(eventsRef);
+      
+      if (!snapshot.exists()) {
+        console.log('No events found in database');
+        return [];
+      }
+
+      const events = [];
+      console.log('Processing events...');
+      
+      snapshot.forEach((childSnapshot) => {
+        const eventData = childSnapshot.val();
+        if (eventData.participants?.some(p => p.id === userId)) {
+          events.push(eventData);
+        }
+      });
+
+      console.log('Found events:', events.length);
+      return events.sort((a, b) => b.created_at - a.created_at);
+    } catch (error) {
+      console.error('Error getting user events:', error);
+      throw error;
+    }
+  }
+
+  async migrateEvents(guildId) {
+    try {
+      console.log('Starting events migration for guild:', guildId);
+      const eventsRef = ref(db, 'events');
+      const snapshot = await get(eventsRef);
+      
+      if (!snapshot.exists()) {
+        console.log('No events to migrate');
+        return;
+      }
+
+      let migratedCount = 0;
+      const migrationPromises = [];
+
+      snapshot.forEach((childSnapshot) => {
+        const eventData = childSnapshot.val();
+        if (!eventData.guild_id) {
+          const eventRef = ref(db, `events/${childSnapshot.key}`);
+          migrationPromises.push(
+            set(eventRef, {
+              ...eventData,
+              guild_id: guildId
+            })
+          );
+          migratedCount++;
+        }
+      });
+
+      if (migratedCount > 0) {
+        console.log(`Migrating ${migratedCount} events...`);
+        await Promise.all(migrationPromises);
+        console.log('Migration completed');
+      } else {
+        console.log('No events need migration');
+      }
+    } catch (error) {
+      console.error('Error migrating events:', error);
+      throw error;
+    }
+  }
+
+  async updateResults(messageId, results) {
+    const event = await this.findEvent(messageId);
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    const eventRef = ref(db, `events/${event.eventKey}`);
+    await set(eventRef, {
+      ...event.eventData,
+      results,
+      completed: true,
+      updated_at: Date.now()
+    });
+  }
+
+  async updateEvent(messageId, updates) {
+    const event = await this.findEvent(messageId);
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    const eventRef = ref(db, `events/${event.eventKey}`);
+    await set(eventRef, {
+      ...event.eventData,
+      ...updates,
+      guild_id: event.eventData.guild_id,
+      updated_at: Date.now()
+    });
+  }
+
+  async deleteEvent(messageId) {
+    const event = await this.findEvent(messageId);
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    // Удаляем сообщение
+    try {
+      await fetch(`https://discord.com/api/v10/channels/${event.eventData.channel_id}/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`
+        }
+      });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+    }
+
+    // Уд��ляем событие из базы
+    const eventRef = ref(db, `events/${event.eventKey}`);
+    await remove(eventRef);
+  }
+
+  async getGuildEvents(guildId) {
+    try {
+      console.log('Getting events for guild:', guildId);
+      const eventsRef = ref(db, 'events');
+      const snapshot = await get(eventsRef);
+      
+      if (!snapshot.exists()) {
+        return [];
+      }
+
+      const events = [];
+      snapshot.forEach((childSnapshot) => {
+        const eventData = childSnapshot.val();
+        const eventGuildId = String(eventData.guild_id);
+        const requestedGuildId = String(guildId);
+        
+        console.log('Checking event:', {
+          eventId: eventData.event_id,
+          eventGuildId,
+          requestedGuildId,
+          match: eventGuildId === requestedGuildId
+        });
+        
+        if (eventGuildId === requestedGuildId) {
+          events.push(eventData);
+        }
+      });
+
+      console.log(`Found ${events.length} events for guild ${guildId}`);
+      return events;
+    } catch (error) {
+      console.error('Error getting guild events:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find event by ID
+   */
+  async findEventById(eventId) {
+    const eventsRef = ref(db, 'events');
+    const snapshot = await get(eventsRef);
+    
+    if (!snapshot.exists()) {
+      return null;
+    }
+
+    let result = null;
+    snapshot.forEach((childSnapshot) => {
+      const event = childSnapshot.val();
+      if (event.event_id === eventId) {
+        result = {
+          eventData: event,
+          eventKey: childSnapshot.key
+        };
+        return true;
+      }
+    });
+
+    return result;
+  }
+
+  // Добавим новый метод для обновления по event_id
+  async updateEventById(eventId, updates) {
+    const event = await this.findEventById(eventId);
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    const eventRef = ref(db, `events/${event.eventKey}`);
+    await set(eventRef, {
+      ...event.eventData,
+      ...updates,
+      guild_id: event.eventData.guild_id,
+      updated_at: Date.now()
+    });
+
+    return event;
   }
 }
 
